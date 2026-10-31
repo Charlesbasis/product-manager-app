@@ -310,4 +310,4 @@ I can customize this for your specific needs:
 - Advanced reporting
 - Third-party integrations (Shopify, WooCommerce, etc.)
 
-<a href="mailto:charlesvhow@gmail.com">📧 Contact me for custom development</a>
+<a href="mailto:info@cvhowlader.com">📧 Contact me for custom development</a>
