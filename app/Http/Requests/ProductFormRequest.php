@@ -28,6 +28,8 @@ class ProductFormRequest extends FormRequest
                 ? "required|image|mimes:jpg,png,jpeg,svg|max:2048"
                 : "nullable|image|mimes:jpg,png,jpeg,svg|max:2048",
             "price" => "required|numeric|min:0",
+            "quantity" => "required|integer|min:0|max:1000000",
+            "status" => "required|in:active,draft,archived",
             "tag" => "nullable|array",
             "tag.*" => "string|distinct|max:50",
         ];
@@ -53,6 +55,12 @@ class ProductFormRequest extends FormRequest
             "price.required" => "Price is required",
             "price.numeric" => "Price must be a number",
             "price.min" => "Price must be at least 0",
+            "quantity.required" => "Quantity is required",
+            "quantity.integer" => "Quantity must be a whole number",
+            "quantity.min" => "Quantity must be at least 0",
+            "quantity.max" => "Quantity must be at most 1,000,000",
+            "status.required" => "Status is required",
+            "status.in" => "Status must be active, draft, or archived",
         ];
     }
 }

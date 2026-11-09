@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Database, ArrowRight, Calendar } from 'lucide-react';
+import { Boxes, ArrowRight, Calendar } from 'lucide-react';
 import PublicFooter from '@/components/public-footer';
 
 interface Post {
@@ -14,7 +14,7 @@ interface Post {
 export default function BlogIndex({ posts, error }: { posts: Post[], error?: string }) {
     return (
         <>
-            <Head title="Blog | Product Manager" />
+            <Head title="Blog | Nexus Inventory" />
 
             <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
                 {/* Simple Nav */}
@@ -22,8 +22,8 @@ export default function BlogIndex({ posts, error }: { posts: Post[], error?: str
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="flex h-16 items-center justify-between">
                             <Link href="/" className="flex items-center">
-                                <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                <span className="ml-2 text-lg font-bold">ProductManager</span>
+                                <Boxes className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                <span className="ml-2 text-lg font-bold">Nexus Inventory</span>
                             </Link>
                             <Link href="/" className="text-sm font-medium hover:text-blue-600">Home</Link>
                         </div>
@@ -33,7 +33,7 @@ export default function BlogIndex({ posts, error }: { posts: Post[], error?: str
                 <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
                     <div className="mb-12 text-center">
                         <h1 className="text-4xl font-bold text-slate-900 dark:text-white sm:text-5xl">Latest from our Blog</h1>
-                        <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">Insights, updates, and guides from the Product Manager team.</p>
+                        <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">Insights, updates, and guides from the Nexus Inventory team.</p>
                     </div>
 
                     {error && (

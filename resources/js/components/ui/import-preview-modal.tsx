@@ -1,6 +1,6 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Button } from './button';
 import { saveAs } from 'file-saver';
 
@@ -8,7 +8,7 @@ interface ImportError {
     row: number;
     attribute: string;
     errors: string[];
-    values: Record<string, any>;
+    values: Record<string, unknown>;
 }
 
 interface ImportPreviewModalProps {

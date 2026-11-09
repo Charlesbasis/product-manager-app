@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Textarea } from '@headlessui/react';
@@ -29,6 +30,8 @@ export default function ProductForm({ ...props }) {
         description: product?.description || '',
         image: null as File | null,
         price: product?.price || '',
+        quantity: product?.quantity ?? 1,
+        status: product?.status || 'active',
         _method: isEdit ? 'PUT' : 'POST',
         tag: product?.tag
         ? Array.isArray(product.tag) 
@@ -49,6 +52,7 @@ export default function ProductForm({ ...props }) {
         transform((data) => {
             if (isEdit && data.image === null) {
                 const { image, ...rest } = data;
+                void image; // Kept out of the payload when no replacement file was chosen.
                 return rest;
             }
             // console.log('📦 Transformed data:', data);
@@ -134,6 +138,45 @@ export default function ProductForm({ ...props }) {
                                     disabled={isView || processing}
                                 />
                                 <InputError message={errors.price} />
+                            </div>
+
+                            <div className="col-span-6 sm:col-span-4">
+                                <Label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
+                                    Quantity in Stock
+                                </Label>
+                                <Input
+                                    value={data.quantity}
+                                    onChange={(e) => setData('quantity', e.target.value)}
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    name="quantity"
+                                    id="quantity"
+                                    disabled={isView || processing}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                />
+                                <InputError message={errors.quantity} />
+                            </div>
+
+                            <div className="col-span-6 sm:col-span-4">
+                                <Label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                                    Status
+                                </Label>
+                                <Select
+                                    value={data.status}
+                                    onValueChange={(value) => setData('status', value)}
+                                    disabled={isView || processing}
+                                >
+                                    <SelectTrigger id="status" className="mt-1 w-full">
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="draft">Draft</SelectItem>
+                                        <SelectItem value="archived">Archived</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.status} />
                             </div>
                             
                             <div className="col-span-6 sm:col-span-4">                                

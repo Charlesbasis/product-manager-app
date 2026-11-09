@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Database, ArrowLeft, Calendar } from 'lucide-react';
+import { Boxes, ArrowLeft, Calendar } from 'lucide-react';
 import PublicFooter from '@/components/public-footer';
 
 interface Post {
@@ -20,8 +20,8 @@ export default function BlogPost({ post }: { post: Post }) {
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="flex h-16 items-center justify-between">
                             <Link href="/" className="flex items-center">
-                                <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                <span className="ml-2 text-lg font-bold">ProductManager</span>
+                                <Boxes className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                <span className="ml-2 text-lg font-bold">Nexus Inventory</span>
                             </Link>
                             <Link href="/blog" className="inline-flex items-center text-sm font-medium hover:text-blue-600">
                                 <ArrowLeft className="mr-2 h-4 w-4" />

@@ -52,10 +52,13 @@ export interface Product {
     id: number;
     name: string;
     description: string;
-    image: string;
+    image: string | null;
     price: number;
+    quantity: number;
+    status: 'active' | 'draft' | 'archived';
+    total_value?: number;
     created_at: string;
-    tag: string[];
+    tag: string | string[];
     tagInput: string;
     slug: string;
 }
@@ -66,6 +69,7 @@ export interface ProductPagination {
     from: number;
     to: number;
     total: number;
+    current_page: number;
     showPerPageInfo?: boolean;
     per_page: number;
 }
@@ -97,7 +101,7 @@ export interface PaginationData {
 }
 
 type SortDirection = 'asc' | 'desc';
-type SortField = 'name' | 'description' | 'price' | 'created_at' | 'tag';
+type SortField = 'name' | 'description' | 'price' | 'quantity' | 'status' | 'created_at';
 
 export interface SortProps {
     field: SortField;
@@ -116,6 +120,15 @@ export interface Tag {
     tag: string;
     slug?: string;
     count?: number;
+}
+
+export interface TagManagementProps {
+    initialTags: string[];
+    onTagsChange: (tags: string[]) => void;
+    availableTags: string[];
+    isViewMode?: boolean;
+    isSubmitting?: boolean;
+    maxTags?: number;
 }
 
 export interface TagComboboxProps {
@@ -165,16 +178,20 @@ export interface PerPageSelectorProps {
 export interface DashboardStatsResponse {
     basic_stats: {
         total_products: number;
+        total_units: number;
         total_value: number;
         avg_price: number;
         min_price: number;
         max_price: number;
     };
     growth_stats: {
-        products: number;
-        value: number;
-        recent_products: number;
+        products: number | null;
+        value: number | null;
+        avg_price: number | null;
+        today_activity: number | null;
+        last_7_days_products: number;
         today_products: number;
+        yesterday_products: number;
     };
     category_distribution: Array<{
         name: string;
@@ -191,6 +208,7 @@ export interface DashboardStatsResponse {
         id: number;
         name: string;
         price: number;
+        quantity: number;
         created_at: string;
         tag: string;
         status: 'active' | 'draft' | 'archived';
@@ -198,6 +216,7 @@ export interface DashboardStatsResponse {
     status_summary: {
         active: number;
         draft: number;
+        archived: number;
         total: number;
     };
     timestamps: {
@@ -214,6 +233,8 @@ export interface ActivityResponse {
         timestamp: string;
         user: string;
         price?: number;
+        quantity?: number;
+        status?: 'active' | 'draft' | 'archived';
         category?: string;
     }>;
     total: number;
@@ -221,17 +242,24 @@ export interface ActivityResponse {
 
 export interface DashboardStats {
   totalProducts: number;
+  totalUnits: number;
   totalValue: number;
   avgPrice: number;
+  minPrice: number;
+  maxPrice: number;
   recentActivity: number;
   todayProducts: number;
+  yesterdayProducts: number;
   growth: {
-    products: number;
-    value: number;
+    products: number | null;
+    value: number | null;
+    avgPrice: number | null;
+    todayActivity: number | null;
   };
   statusSummary: {
     active: number;
     draft: number;
+    archived: number;
     total: number;
   };
   categoryDistribution: Array<{

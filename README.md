@@ -1,4 +1,4 @@
-# ProductManager
+# Nexus Inventory
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-orange.svg)](https://laravel.com)
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4.svg)](https://www.php.net)
@@ -8,7 +8,7 @@
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF.svg)](https://github.com/features/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-ProductManager is a full-stack Laravel + React application for managing products with CRUD operations, dashboard analytics, import/export functionality, and more.
+Nexus Inventory is a full-stack Laravel + React inventory management application with product CRUD, stock quantities, status tracking, dashboard analytics, and import/export functionality.
 
 ## Live Demo
 
@@ -22,7 +22,7 @@ Small businesses and e-commerce stores struggle with:
 - ❌ Manual product updates taking hours
 - ❌ No analytics on product performance
 
-**ProductManager solves this** with a centralized, real-time product catalog with import/export, analytics dashboard, and multi-user access with role-based permissions.
+**Nexus Inventory solves this** with a centralized, real-time catalog that tracks stock quantities, inventory value, import/export, analytics, and multi-user access with role-based permissions.
 
 ## 📈 Results & Metrics
 
@@ -33,8 +33,8 @@ Small businesses and e-commerce stores struggle with:
 
 ## Features
 
-- **Product Management** — Full CRUD operations with image upload
-- **Dashboard Analytics** — Real-time statistics with interactive charts (price distribution, recent products, activity feed)
+- **Inventory Management** — Full CRUD operations with image upload, stock quantity, and active/draft/archived status
+- **Dashboard Analytics** — Real-time statistics with interactive charts (inventory value, price distribution, recent products, activity feed)
 - **Import/Export** — Bulk import products from Excel (.xlsx, .xls, .csv) and export filtered data
 - **Tag System** — Categorize products with multi-tag support
 - **User Authentication** — Secure login/registration via Laravel Fortify
@@ -78,8 +78,8 @@ Small businesses and e-commerce stores struggle with:
 1. **Clone the repository**
 
     ```bash
-    git clone https://github.com/your-username/product-manager.git
-    cd product-manager
+    git clone https://github.com/your-username/nexus-inventory.git
+    cd nexus-inventory
     ```
 
 2. **Install PHP dependencies**
@@ -134,7 +134,7 @@ Key configuration options in `.env`:
 
 | Variable         | Description      | Default                  |
 | ---------------- | ---------------- | ------------------------ |
-| `APP_NAME`       | Application name | ProductManager           |
+| `APP_NAME`       | Application name | Nexus Inventory          |
 | `APP_URL`        | Application URL  | http://localhost:8000    |
 | `DB_CONNECTION`  | Database driver  | sqlite                   |
 | `DB_DATABASE`    | Database name    | database/database.sqlite |

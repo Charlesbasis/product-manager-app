@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 
 const axiosInstance = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000',
@@ -35,7 +35,7 @@ axiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
         // Handle CSRF token mismatch specifically
-        if (error.response?.status === 419) {
+        if (error.response?.status === 419 && error.config) {
             console.error('CSRF token mismatch. Refreshing token...');
             // Optionally: refresh CSRF token and retry
             return refreshCSRFTokenAndRetry(error.config);
@@ -51,7 +51,7 @@ function getCSRFToken(): string | null {
     return null;
 }
 
-async function refreshCSRFTokenAndRetry(originalRequest: any) {
+async function refreshCSRFTokenAndRetry(originalRequest: InternalAxiosRequestConfig) {
     try {
         // Fetch new CSRF token from Laravel
         await axios.get('/sanctum/csrf-cookie');

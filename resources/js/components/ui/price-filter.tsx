@@ -17,7 +17,7 @@ export const PriceFilter = ({ min_price, max_price, onPriceChange, className }: 
         }
 
         minPriceTimeoutRef.current = setTimeout(() => {
-            onPriceChange(value, max_price);
+            onPriceChange(value, max_price ?? '');
         }, 500);
     }, [onPriceChange, max_price]);
 
@@ -30,7 +30,7 @@ export const PriceFilter = ({ min_price, max_price, onPriceChange, className }: 
         }
 
         maxPriceTimeoutRef.current = setTimeout(() => {
-            onPriceChange(min_price, value);
+            onPriceChange(min_price ?? '', value);
         }, 500);
     }, [onPriceChange, min_price]);
 
@@ -45,7 +45,7 @@ export const PriceFilter = ({ min_price, max_price, onPriceChange, className }: 
             if (maxPriceTimeoutRef.current) {
                 clearTimeout(maxPriceTimeoutRef.current);
             }
-            onPriceChange(min_price, max_price);
+            onPriceChange(min_price ?? '', max_price ?? '');
         }
     }, [min_price, max_price, onPriceChange]);
 

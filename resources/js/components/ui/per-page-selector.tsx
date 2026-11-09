@@ -11,25 +11,22 @@ export const PerPageSelector = ({
     route,
     className,
 }: PerPageSelectorProps) => {
-    const [selectedPerPage, setSelectedPerPage] = React.useState<number>(currentPerPage);
+    const [selectedPerPage, setSelectedPerPage] = React.useState<string>(String(currentPerPage));
 
-    const handlePerPageChange = useCallback((value: number) => {
+    const handlePerPageChange = useCallback((value: string) => {
         setSelectedPerPage(value);
 
-        const params = {
+        const params: Record<string, string | number> = {
             ...filters,
-            per_page: value,
+            per_page: Number(value),
             page: 1,
         };
 
-        const queryParams: Record<string, any> = {};
-        Object.keys(params).forEach((key) => {
-            // @ts-ignore
-            if (params[key] !== '' && params[key] !== undefined && params[key] !== null) {
-                // @ts-ignore
-                queryParams[key] = params[key];
-            }
-        });
+        const queryParams = Object.fromEntries(
+            Object.entries(params).filter(
+                ([, param]) => param !== '' && param !== undefined && param !== null
+            )
+        );
 
         router.get(route, queryParams, {
             preserveScroll: true,
@@ -39,13 +36,13 @@ export const PerPageSelector = ({
     }, [filters, route]);
 
     useEffect(() => {
-        setSelectedPerPage(currentPerPage);
+        setSelectedPerPage(String(currentPerPage));
     }, [currentPerPage]);
 
     // console.log('from page select perPageOptions:', perPageOptions)
     // console.log('from page select selectedPerPage:', selectedPerPage)
     return (
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${className ?? ''}`}>
             <Label htmlFor="perPage">
                 Items per page
             </Label>
@@ -58,7 +55,7 @@ export const PerPageSelector = ({
                 </SelectTrigger>
                 <SelectContent>
                     {perPageOptions.map((perPage) => (
-                        <SelectItem key={perPage} value={perPage}>
+                        <SelectItem key={perPage} value={String(perPage)}>
                             {perPage}
                         </SelectItem>
                     ))}

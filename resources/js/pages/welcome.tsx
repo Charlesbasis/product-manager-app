@@ -4,8 +4,8 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
     BarChart,
+    Boxes,
     Cloud,
-    Database,
     Layers,
     Shield,
     Zap
@@ -20,9 +20,9 @@ export default function Welcome({
     const { auth } = usePage<SharedData>().props;
 
     // SEO Metadata
-    const pageTitle = "Product Manager | Powerful Management Solution";
-    const pageDescription = "Streamline your product management with our intuitive application. Create, Read, Update, and Delete products efficiently with advanced filtering, sorting, and bulk operations.";
-    const pageKeywords = "product management application, inventory management, admin dashboard, product database, SaaS tool";
+    const pageTitle = "Nexus Inventory | Inventory Management & Analytics";
+    const pageDescription = "Track stock levels, inventory value, and product performance from one intuitive dashboard. Manage quantities, statuses, tags, and bulk imports with confidence.";
+    const pageKeywords = "inventory management application, stock tracking, inventory value, product database, admin dashboard, SaaS tool";
 
     return (
         <>
@@ -44,7 +44,7 @@ export default function Welcome({
                     {JSON.stringify({
                         "@context": "https://schema.org",
                         "@type": "SoftwareApplication",
-                        "name": "Product Manager",
+                        "name": "Nexus Inventory",
                         "description": pageDescription,
                         "applicationCategory": "BusinessApplication",
                         "offers": {
@@ -53,10 +53,10 @@ export default function Welcome({
                             "priceCurrency": "USD"
                         },
                         "featureList": [
-                            "Advanced Product Manager Operations",
+                            "Real-time Stock Quantity Tracking",
+                            "Inventory Value Analytics",
                             "Bulk Import/Export",
                             "Smart Filtering & Sorting",
-                            "Real-time Search",
                             "Secure Data Management",
                             "Responsive Dashboard"
                         ]
@@ -71,8 +71,8 @@ export default function Welcome({
                         <div className="flex h-16 items-center justify-between">
                             {/* Logo Section */}
                             <div className="flex items-center shrink-0">
-                                <Database className="h-6 w-6 text-blue-600 dark:text-blue-400 sm:h-8 sm:w-8" />
-                                <span className="ml-2 text-lg font-bold sm:text-xl">ProductManager</span>
+                                <Boxes className="h-6 w-6 text-blue-600 dark:text-blue-400 sm:h-8 sm:w-8" />
+                                <span className="ml-2 text-lg font-bold sm:text-xl">Nexus Inventory</span>
                             </div>
 
                             {/* Navigation Section */}
@@ -125,10 +125,10 @@ export default function Welcome({
                             <div className="text-center">
                                 <h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
                                     Master Your
-                                    <span className="block text-blue-600 dark:text-blue-400">Product Universe</span>
+                                    <span className="block text-blue-600 dark:text-blue-400">Inventory Universe</span>
                                 </h1>
                                 <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
-                                    The most intuitive and powerful product management system. Create, organize, and analyze your products with enterprise-grade features made simple.
+                                    Track stock, inventory value, and product performance from one intuitive dashboard. Built for teams that need accurate numbers, not guesswork.
                                 </p>
                                 <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
                                     <Link
@@ -153,17 +153,17 @@ export default function Welcome({
                     <section id="features" className="py-20 bg-gray-50 dark:bg-gray-900">
                         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="text-center">
-                                <h2 className="text-3xl font-bold sm:text-4xl">Everything You Need for Product Management</h2>
+                                <h2 className="text-3xl font-bold sm:text-4xl">Everything You Need for Inventory Management</h2>
                                 <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
-                                    Packed with features that make product management effortless
+                                    Packed with features that make inventory management effortless
                                 </p>
                             </div>
 
                             <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
                                 <FeatureCard
-                                    icon={<Database className="h-8 w-8 text-blue-600 dark:text-blue-400" />}
-                                    title="Complete Manager Operations"
-                                    description="Create, Read, Update, and Delete products with ease. Intuitive interface with real-time validation."
+                                    icon={<Boxes className="h-8 w-8 text-blue-600 dark:text-blue-400" />}
+                                    title="Complete Inventory Operations"
+                                    description="Create, read, update, and delete products with stock quantities, statuses, and real-time validation."
                                 />
                                 <FeatureCard
                                     icon={<BarChart className="h-8 w-8 text-green-600 dark:text-green-400" />}
@@ -209,7 +209,7 @@ export default function Welcome({
                                     <StepCard
                                         number="01"
                                         title="Add Your Products"
-                                        description="Easily add products with images, descriptions, prices, and tags. Bulk import available."
+                                        description="Easily add products with images, descriptions, prices, quantities, statuses, and tags. Bulk import available."
                                     />
                                     <StepCard
                                         number="02"
@@ -231,7 +231,7 @@ export default function Welcome({
                         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="text-center">
                                 <h2 className="text-3xl font-bold text-white sm:text-4xl">
-                                    Ready to Transform Your Product Management?
+                                    Ready to Transform Your Inventory Management?
                                 </h2>
                                 <p className="mx-auto mt-4 max-w-2xl text-lg text-blue-100">
                                     Join thousands of businesses managing their products efficiently with our platform.

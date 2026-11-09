@@ -1,22 +1,26 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
 
 export default function StatCard({
-  title, 
-  value, 
-  change, 
-  icon, 
+  title,
+  value,
+  change,
+  icon,
   color,
-  detail 
-}: { 
-  title: string; 
-  value: string | number; 
-  change: number; 
-  icon: React.ReactNode; 
+  detail,
+  changeLabel = "vs previous period",
+  emptyChangeLabel = "No prior data",
+}: {
+  title: string;
+  value: string | number;
+  change: number | null;
+  icon: React.ReactNode;
   color: string;
   detail?: string;
+  changeLabel?: string;
+  emptyChangeLabel?: string;
 }) {
-  const isPositive = change >= 0;
-  
+  const isPositive = (change ?? 0) >= 0;
+
   const colorClasses = {
     blue: 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800',
     green: 'bg-green-50 border-green-100 dark:bg-green-900/20 dark:border-green-800',
@@ -44,7 +48,9 @@ export default function StatCard({
         </div>
       </div>
       <div className="mt-4 flex items-center text-sm">
-        {change !== 0 ? (
+        {change === null ? (
+          <span className="text-gray-500 dark:text-gray-400">{emptyChangeLabel}</span>
+        ) : change !== 0 ? (
           <>
             {isPositive ? (
               <TrendingUp className="mr-1 h-4 w-4 text-green-500" />
@@ -54,10 +60,10 @@ export default function StatCard({
             <span className={isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
               {isPositive ? '+' : ''}{change.toFixed(1)}%
             </span>
-            <span className="ml-2 text-gray-500 dark:text-gray-400">from last month</span>
+            <span className="ml-2 text-gray-500 dark:text-gray-400">{changeLabel}</span>
           </>
         ) : (
-          <span className="text-gray-500 dark:text-gray-400">No change from last month</span>
+          <span className="text-gray-500 dark:text-gray-400">No change {changeLabel}</span>
         )}
       </div>
     </div>

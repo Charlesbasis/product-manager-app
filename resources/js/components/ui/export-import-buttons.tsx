@@ -1,6 +1,7 @@
 import axiosInstance from '@/lib/axios';
+import axios from 'axios';
 import { router } from '@inertiajs/react';
-import { AlertCircle, CheckCircle, Download, FileSpreadsheet, Upload, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Download, Upload, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { Button } from './button';
 
@@ -14,14 +15,25 @@ interface ExportImportButtonsProps {
     };
 }
 
+interface ImportFailure {
+    row?: number;
+    attribute?: string;
+    errors?: string[];
+    values?: Record<string, unknown>;
+}
+
+type ImportError = ImportFailure | string;
+
+interface ImportResult {
+    success: boolean;
+    message: string;
+    errors?: ImportError[];
+}
+
 export function ExportImportButtons({ filters }: ExportImportButtonsProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isImporting, setIsImporting] = useState(false);
-    const [importResult, setImportResult] = useState<{
-        success: boolean;
-        message: string;
-        errors?: any[];
-    } | null>(null);
+    const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
     const handleExport = () => {
         // Build query string from filters
@@ -71,27 +83,22 @@ export function ExportImportButtons({ filters }: ExportImportButtonsProps) {
                     router.reload({ only: ['products'] });
                 }, 1500);
             }
-        } catch (error: any) {
-            if (error.response) {
-                console.error('Error importing file:', error.response.data);
+        } catch (error) {
+            console.error('Error importing file:', error);
+
+            if (axios.isAxiosError(error)) {
+                const data = error.response?.data as { errors?: ImportError[] } | undefined;
+
                 setImportResult({
                     success: false,
                     message: 'Failed to import file. Please try again.',
-                    errors: error.response?.data?.errors || [],
-                });
-            } else if (error.request) {
-                console.error('Error importing file:', error.request);
-                setImportResult({
-                    success: false,
-                    message: 'Failed to import file. Please try again.',
-                    errors: [error.request],
+                    errors: data?.errors ?? [error.message],
                 });
             } else {
-                console.error('Error importing file:', error);
                 setImportResult({
                     success: false,
                     message: 'Failed to import file. Please try again.',
-                    errors: [error],
+                    errors: [error instanceof Error ? error.message : String(error)],
                 });
             }
         } finally {

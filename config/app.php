@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Product Manager'),
+    'name' => env('APP_NAME', 'Nexus Inventory'),
 
     /*
     |--------------------------------------------------------------------------

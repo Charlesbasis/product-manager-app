@@ -4,14 +4,23 @@ namespace App\Exports;
 
 use App\Models\Product;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ProductsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
 {
+    private const SORTABLE_COLUMNS = [
+        'name',
+        'description',
+        'price',
+        'quantity',
+        'status',
+        'created_at',
+    ];
+
     protected $filters;
 
     public function __construct(array $filters = [])
@@ -21,27 +30,37 @@ class ProductsExport implements FromCollection, WithHeadings, WithMapping, Shoul
 
     public function collection()
     {
-        $query = Product::query();
-        
-        // Apply filters (same as your index page)
+        $query = Product::query()->with('tags');
+
+        // Apply filters (same as the index page). The search clause is grouped
+        // so it cannot bypass the price filters.
         if (!empty($this->filters['search'])) {
-            $query->where('name', 'like', '%' . $this->filters['search'] . '%')
-                  ->orWhere('description', 'like', '%' . $this->filters['search'] . '%');
+            $search = $this->filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
         }
-        
+
         if (!empty($this->filters['min_price'])) {
             $query->where('price', '>=', $this->filters['min_price']);
         }
-        
+
         if (!empty($this->filters['max_price'])) {
             $query->where('price', '<=', $this->filters['max_price']);
         }
-        
+
         if (!empty($this->filters['sort'])) {
-            $direction = $this->filters['direction'] ?? 'asc';
-            $query->orderBy($this->filters['sort'], $direction);
+            $sort = in_array($this->filters['sort'], self::SORTABLE_COLUMNS, true)
+                ? $this->filters['sort']
+                : 'created_at';
+            $direction = ($this->filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+            $query->orderBy($sort, $direction);
+        } else {
+            $query->latest();
         }
-        
+
         return $query->get();
     }
 
@@ -52,10 +71,13 @@ class ProductsExport implements FromCollection, WithHeadings, WithMapping, Shoul
             'Name',
             'Description',
             'Price',
+            'Quantity',
+            'Inventory Value',
+            'Status',
             'Image URL',
             'Tags',
             'Created At',
-            'Updated At'
+            'Updated At',
         ];
     }
 
@@ -66,8 +88,11 @@ class ProductsExport implements FromCollection, WithHeadings, WithMapping, Shoul
             $product->name,
             $product->description,
             $product->price,
-            $product->image,
-            $product->tag,
+            $product->quantity,
+            round((float) $product->price * (int) $product->quantity, 2),
+            $product->status,
+            $product->image_url,
+            $product->tags->pluck('tag')->implode(', '),
             $product->created_at->format('Y-m-d H:i:s'),
             $product->updated_at->format('Y-m-d H:i:s'),
         ];

@@ -1,9 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
-import { Database, ArrowLeft } from 'lucide-react';
+import { Boxes, ArrowLeft } from 'lucide-react';
 
 export default function TermsOfService() {
-    const pageTitle = "Terms of Service | Product Manager";
-    const pageDescription = "Read the terms and conditions for using Product Manager services.";
+    const pageTitle = "Terms of Service | Nexus Inventory";
+    const pageDescription = "Read the terms and conditions for using Nexus Inventory services.";
 
     return (
         <>
@@ -17,8 +17,8 @@ export default function TermsOfService() {
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="flex h-16 items-center justify-between">
                             <Link href="/" className="flex items-center shrink-0">
-                                <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                <span className="ml-2 text-lg font-bold">ProductManager</span>
+                                <Boxes className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                <span className="ml-2 text-lg font-bold">Nexus Inventory</span>
                             </Link>
                             <Link
                                 href="/"
@@ -39,35 +39,35 @@ export default function TermsOfService() {
                         <section className="mb-10">
                             <h2 className="text-2xl font-bold mb-4">1. Agreement to Terms</h2>
                             <p>
-                                By accessing or using Product Manager, you agree to be bound by these terms. If you do not agree to all the terms and conditions of this agreement, then you may not access the website or use any services.
+                                By accessing or using Nexus Inventory, you agree to be bound by these terms. If you do not agree to all the terms and conditions of this agreement, then you may not access the website or use any services.
                             </p>
                         </section>
 
                         <section className="mb-10">
                             <h2 className="text-2xl font-bold mb-4">2. Description of Service</h2>
                             <p>
-                                Product Manager provides users with a comprehensive product management tool that allows them to create, read, update, and delete product data, and perform bulk operations.
+                                Nexus Inventory provides users with a comprehensive inventory management tool that allows them to create, read, update, and delete product data, track stock quantities, and perform bulk operations.
                             </p>
                         </section>
 
                         <section className="mb-10">
                             <h2 className="text-2xl font-bold mb-4">3. User Obligations</h2>
                             <p>
-                                You are responsible for ensuring your use of the website and services is in compliance with all applicable laws and regulations. You may not use Product Manager for any illegal or unauthorized purpose.
+                                You are responsible for ensuring your use of the website and services is in compliance with all applicable laws and regulations. You may not use Nexus Inventory for any illegal or unauthorized purpose.
                             </p>
                         </section>
 
                         <section className="mb-10">
                             <h2 className="text-2xl font-bold mb-4">4. Intellectual Property</h2>
                             <p>
-                                All content, trademarks, and logos displayed on Product Manager are the property of their respective owners. You may not use, reproduce, or distribute any content without prior written permission.
+                                All content, trademarks, and logos displayed on Nexus Inventory are the property of their respective owners. You may not use, reproduce, or distribute any content without prior written permission.
                             </p>
                         </section>
 
                         <section className="mb-10">
                             <h2 className="text-2xl font-bold mb-4">5. Disclaimer of Liability</h2>
                             <p>
-                                Product Manager is provided "as is" without any warranties. We shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of the service.
+                                Nexus Inventory is provided "as is" without any warranties. We shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of the service.
                             </p>
                         </section>
 
@@ -92,7 +92,7 @@ export default function TermsOfService() {
 
                 <footer className="border-t border-gray-200 bg-gray-50 py-8 dark:border-gray-800 dark:bg-gray-900">
                     <div className="mx-auto max-w-7xl px-4 text-center text-sm text-gray-600 dark:text-gray-400">
-                        © {new Date().getFullYear()} Product Manager. All rights reserved.
+                        © {new Date().getFullYear()} Nexus Inventory. All rights reserved.
                     </div>
                 </footer>
             </div>
