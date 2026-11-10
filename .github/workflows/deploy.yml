@@ -25,11 +25,7 @@ jobs:
       - name: 📦 Install PHP Dependencies
         run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-      # 3. Generate Key (Required for some Artisan commands)
-      - name: 🔑 Generate App Key
-        run: php artisan key:generate
-
-      # 4. Now install JS and Build
+      # 3. Now install JS and Build
       - name: 📦 Install & Build (Frontend SSR)
         run: |
           pnpm install --frozen-lockfile
@@ -44,6 +40,7 @@ jobs:
           REMOTE_USER: ${{ secrets.REMOTE_USER }}
           TARGET: "/home/cvhowlad/app3.cvhowlader.com"
           SOURCE: "./"
+          EXCLUDE: ".env,.env.*"
           REMOTE_PORT: 22
 
       # 6. Post-Deployment
