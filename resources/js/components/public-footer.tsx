@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Database } from 'lucide-react';
+import { Boxes } from 'lucide-react';
 
 export default function PublicFooter() {
     return (
@@ -7,12 +7,12 @@ export default function PublicFooter() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
                     <div className="flex items-center">
-                        <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                        <span className="ml-2 text-lg font-bold">ProductManager</span>
+                        <Boxes className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        <span className="ml-2 text-lg font-bold">Nexus Inventory</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-4 text-sm text-gray-600 dark:text-gray-400 md:flex-row md:gap-8">
-                        <p>© {new Date().getFullYear()} Product Manager by <a href="https://www.cvhowlader.com" target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-blue-600">CVHowlader</a>. All rights reserved.</p>
+                        <p>© {new Date().getFullYear()} Nexus Inventory by <a href="https://www.cvhowlader.com" target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-blue-600">CVHowlader</a>. All rights reserved.</p>
                         <nav className="flex gap-4">
                             <Link href="/privacy-policy" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Privacy Policy</Link>
                             <Link href="/terms-of-service" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Terms of Service</Link>

@@ -5,30 +5,21 @@ import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Package, 
-  Users, 
-  Clock, 
-  BarChart3, 
-  Upload,
+import {
+  DollarSign,
+  Package,
+  Clock,
+  BarChart3,
   Download,
   AlertCircle,
-  CheckCircle,
   Eye,
   Edit,
-  ShoppingCart,
-  TrendingDown,
-  MoreHorizontal,
   ArrowRight,
   Plus,
   RefreshCw,
-  AlertTriangle,
-  Info
+  AlertTriangle
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { router } from '@inertiajs/react';
+import { useCallback, useEffect, useState } from 'react';
 import PriceDistributionChart from '@/components/PriceDistributionChart';
 import StatusBadge from '@/components/StatusBadge';
 import StatCard from '@/components/StatCard';
@@ -44,16 +35,20 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface DashboardStatsResponse {
     basic_stats: {
         total_products: number;
+        total_units: number;
         total_value: number;
         avg_price: number;
         min_price: number;
         max_price: number;
     };
     growth_stats: {
-        products: number;
-        value: number;
-        recent_products: number;
+        products: number | null;
+        value: number | null;
+        avg_price: number | null;
+        today_activity: number | null;
+        last_7_days_products: number;
         today_products: number;
+        yesterday_products: number;
     };
     category_distribution: Array<{
         name: string;
@@ -70,6 +65,7 @@ interface DashboardStatsResponse {
         id: number;
         name: string;
         price: number;
+        quantity: number;
         created_at: string;
         tag: string;
         status: 'active' | 'draft' | 'archived';
@@ -77,6 +73,7 @@ interface DashboardStatsResponse {
     status_summary: {
         active: number;
         draft: number;
+        archived: number;
         total: number;
     };
     timestamps: {
@@ -100,17 +97,24 @@ interface ActivityResponse {
 
 interface DashboardStats {
   totalProducts: number;
+  totalUnits: number;
   totalValue: number;
   avgPrice: number;
+  minPrice: number;
+  maxPrice: number;
   recentActivity: number;
   todayProducts: number;
+  yesterdayProducts: number;
   growth: {
-    products: number;
-    value: number;
+    products: number | null;
+    value: number | null;
+    avgPrice: number | null;
+    todayActivity: number | null;
   };
   statusSummary: {
     active: number;
     draft: number;
+    archived: number;
     total: number;
   };
   categoryDistribution: Array<{
@@ -126,20 +130,56 @@ interface DashboardStats {
   }>;
 }
 
+// Format a numeric value as USD, tolerating strings and nulls from the API.
+const formatPrice = (price: unknown): string => {
+  if (price === null || price === undefined) return '$0.00';
+
+  const numPrice = typeof price === 'string' ? parseFloat(price) : Number(price);
+
+  if (isNaN(numPrice)) return '$0.00';
+
+  return `$${numPrice.toFixed(2)}`;
+};
+
+// Parse a numeric value from the API, falling back when it is missing.
+const safeParseNumber = (value: unknown, defaultValue: number = 0): number => {
+  if (value === null || value === undefined) return defaultValue;
+
+  const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+
+  return isNaN(num) ? defaultValue : num;
+};
+
+// Growth values are nullable: null means there is no baseline to compare to.
+const parseNullableNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+
+  const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+
+  return isNaN(num) ? null : num;
+};
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalProducts: 0,
+    totalUnits: 0,
     totalValue: 0,
     avgPrice: 0,
+    minPrice: 0,
+    maxPrice: 0,
     recentActivity: 0,
     todayProducts: 0,
+    yesterdayProducts: 0,
     growth: {
-      products: 0,
-      value: 0
+      products: null,
+      value: null,
+      avgPrice: null,
+      todayActivity: null
     },
     statusSummary: {
       active: 0,
       draft: 0,
+      archived: 0,
       total: 0
     },
     categoryDistribution: [],
@@ -150,6 +190,7 @@ export default function Dashboard() {
     id: number;
     name: string;
     price: number;
+    quantity: number;
     created_at: string;
     tag: string;
     status: 'active' | 'draft' | 'archived';
@@ -162,6 +203,8 @@ export default function Dashboard() {
     timestamp: string;
     user: string;
     price?: number;
+    quantity?: number;
+    status?: 'active' | 'draft' | 'archived';
     category?: string;
   }>>([]);
 
@@ -169,28 +212,8 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  // Helper function to safely format prices
-  const formatPrice = (price: any): string => {
-    if (price === null || price === undefined) return '$0.00';
-    
-    const numPrice = typeof price === 'string' ? parseFloat(price) : Number(price);
-    
-    if (isNaN(numPrice)) return '$0.00';
-    
-    return `$${numPrice.toFixed(2)}`;
-  };
-
-  // Helper function to safely parse numbers
-  const safeParseNumber = (value: any, defaultValue: number = 0): number => {
-    if (value === null || value === undefined) return defaultValue;
-    
-    const num = typeof value === 'string' ? parseFloat(value) : Number(value);
-    
-    return isNaN(num) ? defaultValue : num;
-  };
-
   // Fetch dashboard data
-  const fetchDashboardData = async (signal?: AbortSignal) => {
+  const fetchDashboardData = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
 
@@ -214,17 +237,24 @@ export default function Dashboard() {
       // Safely transform stats data
       setStats({
         totalProducts: safeParseNumber(statsData.basic_stats.total_products),
+        totalUnits: safeParseNumber(statsData.basic_stats.total_units),
         totalValue: safeParseNumber(statsData.basic_stats.total_value),
         avgPrice: safeParseNumber(statsData.basic_stats.avg_price),
-        recentActivity: safeParseNumber(statsData.growth_stats.recent_products),
+        minPrice: safeParseNumber(statsData.basic_stats.min_price),
+        maxPrice: safeParseNumber(statsData.basic_stats.max_price),
+        recentActivity: safeParseNumber(statsData.growth_stats.last_7_days_products),
         todayProducts: safeParseNumber(statsData.growth_stats.today_products),
+        yesterdayProducts: safeParseNumber(statsData.growth_stats.yesterday_products),
         growth: {
-          products: safeParseNumber(statsData.growth_stats.products),
-          value: safeParseNumber(statsData.growth_stats.value)
+          products: parseNullableNumber(statsData.growth_stats.products),
+          value: parseNullableNumber(statsData.growth_stats.value),
+          avgPrice: parseNullableNumber(statsData.growth_stats.avg_price),
+          todayActivity: parseNullableNumber(statsData.growth_stats.today_activity)
         },
         statusSummary: {
           active: safeParseNumber(statsData.status_summary?.active),
           draft: safeParseNumber(statsData.status_summary?.draft),
+          archived: safeParseNumber(statsData.status_summary?.archived),
           total: safeParseNumber(statsData.status_summary?.total)
         },
         categoryDistribution: Array.isArray(statsData.category_distribution)
@@ -250,6 +280,7 @@ export default function Dashboard() {
           id: safeParseNumber(product?.id),
           name: product?.name || 'Unnamed Product',
           price: safeParseNumber(product?.price),
+          quantity: safeParseNumber(product?.quantity),
           created_at: product?.created_at || 'Just now',
           tag: product?.tag || 'Uncategorized',
           status: (product?.status === 'active' || product?.status === 'draft' || product?.status === 'archived')
@@ -293,9 +324,9 @@ export default function Dashboard() {
         // Don't fail the whole dashboard if activity log fails
       }
 
-    } catch (error: any) {
+    } catch (error) {
       // 1. Check if the error is a deliberate cancellation
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         console.log('Fetch aborted: Page changed or component unmounted.');
         return; // Exit quietly, don't show an error to the user
       }
@@ -305,12 +336,16 @@ export default function Dashboard() {
       // Set fallback data
       setStats({
         totalProducts: 0,
+        totalUnits: 0,
         totalValue: 0,
         avgPrice: 0,
+        minPrice: 0,
+        maxPrice: 0,
         recentActivity: 0,
         todayProducts: 0,
-        growth: { products: 0, value: 0 },
-        statusSummary: { active: 0, draft: 0, total: 0 },
+        yesterdayProducts: 0,
+        growth: { products: null, value: null, avgPrice: null, todayActivity: null },
+        statusSummary: { active: 0, draft: 0, archived: 0, total: 0 },
         categoryDistribution: [],
         priceDistribution: []
       });
@@ -320,7 +355,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -341,7 +376,7 @@ export default function Dashboard() {
       controller.abort(); // Cancel the request if the component unmounts
       clearInterval(refreshInterval);
     };
-  }, []);
+  }, [fetchDashboardData]);
 
   // Handle refresh button click
   const handleRefresh = () => {
@@ -447,7 +482,7 @@ export default function Dashboard() {
               <div>
                 <p className="font-medium text-red-800 dark:text-red-300">{error}</p>
                 <Button 
-                  onClick={fetchDashboardData}
+                  onClick={() => fetchDashboardData()}
                   variant="link"
                   className="mt-1 h-auto p-0 text-red-700 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                 >
@@ -464,33 +499,44 @@ export default function Dashboard() {
             title="Total Products"
             value={stats.totalProducts.toLocaleString()}
             change={stats.growth.products}
+            changeLabel="vs 30 days ago"
             icon={<Package className="h-5 w-5 text-blue-600" />}
             color="blue"
-            detail={`Active: ${stats.statusSummary.active} | Draft: ${stats.statusSummary.draft}`}
+            detail={`Total units: ${stats.totalUnits.toLocaleString()} | Active: ${stats.statusSummary.active} | Draft: ${stats.statusSummary.draft}`}
           />
           <StatCard
             title="Inventory Value"
             value={formatPrice(stats.totalValue)}
             change={stats.growth.value}
+            changeLabel="vs 30 days ago"
             icon={<DollarSign className="h-5 w-5 text-green-600" />}
             color="green"
-            detail={`Avg: ${formatPrice(stats.avgPrice)}`}
+            detail={`Avg unit price: ${formatPrice(stats.avgPrice)}`}
           />
           <StatCard
-            title="Today's Activity"
+            title="Products Added Today"
             value={stats.todayProducts.toString()}
-            change={stats.growth.products}
+            change={stats.growth.todayActivity}
+            changeLabel="vs yesterday"
+            emptyChangeLabel={
+              stats.todayProducts > 0
+                ? 'New today'
+                : stats.yesterdayProducts > 0
+                  ? 'No activity today'
+                  : 'No activity today or yesterday'
+            }
             icon={<Clock className="h-5 w-5 text-purple-600" />}
             color="purple"
-            detail={`Recent (7 days): ${stats.recentActivity}`}
+            detail={`Last 7 days: ${stats.recentActivity}`}
           />
           <StatCard
-            title="Avg. Price"
+            title="Avg. Unit Price"
             value={formatPrice(stats.avgPrice)}
-            change={stats.growth.value}
+            change={stats.growth.avgPrice}
+            changeLabel="vs 30 days ago"
             icon={<BarChart3 className="h-5 w-5 text-orange-600" />}
             color="orange"
-            detail={`Min: ${formatPrice(stats.statusSummary.total > 0 ? stats.avgPrice - (stats.avgPrice * 0.3) : 0)} | Max: ${formatPrice(stats.statusSummary.total > 0 ? stats.avgPrice + (stats.avgPrice * 0.5) : 0)}`}
+            detail={`Min: ${formatPrice(stats.minPrice)} | Max: ${formatPrice(stats.maxPrice)}`}
           />
         </div>
 
@@ -535,6 +581,7 @@ export default function Dashboard() {
                       <tr className="border-b border-gray-200 text-left text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
                         <th className="px-6 py-3 font-medium">Product</th>
                         <th className="px-6 py-3 font-medium">Price</th>
+                        <th className="px-6 py-3 font-medium">Qty</th>
                         <th className="px-6 py-3 font-medium">Category</th>
                         <th className="px-6 py-3 font-medium">Status</th>
                         <th className="px-6 py-3 font-medium">Actions</th>
@@ -548,6 +595,7 @@ export default function Dashboard() {
                             <div className="text-sm text-gray-500 dark:text-gray-400">{product.created_at}</div>
                           </td>
                           <td className="px-6 py-4 font-medium">{formatPrice(product.price)}</td>
+                          <td className="px-6 py-4">{product.quantity}</td>
                           <td className="px-6 py-4">
                             <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
                               {product.tag}

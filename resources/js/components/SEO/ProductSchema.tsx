@@ -1,4 +1,14 @@
-export default function ProductSchema({ product }) {
+interface ProductSchemaProduct {
+  name?: string;
+  description?: string;
+  image?: string | null;
+  slug?: string;
+  price?: number | string;
+  quantity?: number | string;
+  status?: 'active' | 'draft' | 'archived';
+}
+
+export default function ProductSchema({ product }: { product?: ProductSchemaProduct | null }) {
   if (!product) return null;
 
   return (
@@ -16,7 +26,11 @@ export default function ProductSchema({ product }) {
             "@type": "Offer",
             priceCurrency: "USD",
             price: product.price,
-            availability: "https://schema.org/InStock"
+            availability: product.status === 'active' && Number(product.quantity) > 0
+              ? "https://schema.org/InStock"
+              : product.status === 'archived'
+                ? "https://schema.org/Discontinued"
+                : "https://schema.org/OutOfStock"
           }
         })
       }}

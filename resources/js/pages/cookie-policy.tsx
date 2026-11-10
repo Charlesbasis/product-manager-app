@@ -1,9 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
-import { Database, ArrowLeft } from 'lucide-react';
+import { Boxes, ArrowLeft } from 'lucide-react';
 
 export default function CookiePolicy() {
-    const pageTitle = "Cookie Policy | Product Manager";
-    const pageDescription = "Information about how we use cookies and similar technologies on Product Manager.";
+    const pageTitle = "Cookie Policy | Nexus Inventory";
+    const pageDescription = "Information about how we use cookies and similar technologies on Nexus Inventory.";
 
     return (
         <>
@@ -17,8 +17,8 @@ export default function CookiePolicy() {
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="flex h-16 items-center justify-between">
                             <Link href="/" className="flex items-center shrink-0">
-                                <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                <span className="ml-2 text-lg font-bold">ProductManager</span>
+                                <Boxes className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                <span className="ml-2 text-lg font-bold">Nexus Inventory</span>
                             </Link>
                             <Link
                                 href="/"
@@ -84,7 +84,7 @@ export default function CookiePolicy() {
 
                 <footer className="border-t border-gray-200 bg-gray-50 py-8 dark:border-gray-800 dark:bg-gray-900">
                     <div className="mx-auto max-w-7xl px-4 text-center text-sm text-gray-600 dark:text-gray-400">
-                        © {new Date().getFullYear()} Product Manager. All rights reserved.
+                        © {new Date().getFullYear()} Nexus Inventory. All rights reserved.
                     </div>
                 </footer>
             </div>

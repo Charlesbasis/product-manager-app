@@ -51,15 +51,15 @@ export const validateTagName = (tag: string) : { isValid: boolean, errors: strin
     };
 }
 
-export const exportToCsv = (data: any, filename: string) => {
+export const exportToCsv = (data: Parameters<typeof Papa.unparse>[0], filename: string) => {
     const csv = Papa.unparse(data);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, `${filename}_${Date.now()}.csv`);
 };
 
-export const parseCSV = (file: File): Promise<any> => {
+export const parseCSV = (file: File): Promise<Record<string, unknown>[]> => {
     return new Promise((resolve, reject) => {
-        Papa.parse(file, {
+        Papa.parse<Record<string, unknown>>(file, {
             header: true,
             skipEmptyLines: true,
             complete: (results) => {
@@ -72,28 +72,27 @@ export const parseCSV = (file: File): Promise<any> => {
     });
 };
 
-export const validateImportData = (data: any[]) => {
+export const validateImportData = (data: Array<Record<string, unknown>>) => {
     const errors: string[] = [];
 
     data.forEach((row, index) => {
         const rowNumber = index + 2;
+        const name = typeof row.name === 'string' ? row.name.trim() : '';
+        const price = typeof row.price === 'string' ? row.price.trim() : row.price;
+        const priceNumber = typeof price === 'number' ? price : Number(price);
 
-        if (!row.name || row.name.trim() === '') {
+        if (name === '') {
             errors.push(`Row ${rowNumber}: Name cannot be empty`);
         }
 
-        if (!row.price || row.price.trim() === '') {
+        if (price === undefined || price === null || price === '') {
             errors.push(`Row ${rowNumber}: Price cannot be empty`);
-        }
-
-        if (!row.price || isNaN(parseFloat(row.price))) {
+        } else if (isNaN(priceNumber)) {
             errors.push(`Row ${rowNumber}: Price must be a number`);
-        }
-        
-        if (row.price && parseFloat(row.price) < 0) {
+        } else if (priceNumber < 0) {
             errors.push(`Row ${rowNumber}: Price cannot be negative`);
         }
-        
+
         if (row.image_url && typeof row.image_url !== 'string') {
             errors.push(`Row ${rowNumber}: Image URL must be a string`);
         }
@@ -106,7 +105,7 @@ export const isValidUrl = (url: string) => {
     try {
         new URL(url);
         return true;
-    } catch (e) {
+    } catch {
         return false;
     }
 };

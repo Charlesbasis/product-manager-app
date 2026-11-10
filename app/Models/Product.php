@@ -2,18 +2,30 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
 
 class Product extends Model
 {
-    protected $fillable = [ 'name', 'description', 'image', 'price', 'is_active' ];
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'description',
+        'image',
+        'image_original_name',
+        'price',
+        'quantity',
+        'status',
+    ];
 
     protected $appends = ['image_url'];
 
     protected $casts = [
-        'price' => 'float', // Add this line
+        'price' => 'float',
+        'quantity' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

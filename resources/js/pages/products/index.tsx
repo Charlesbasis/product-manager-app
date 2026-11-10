@@ -5,10 +5,10 @@ import {
     index as productsIndex,
     show as productsShow
 } from '@/actions/App/Http/Controllers/ProductController';
+import StatusBadge from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ExportImportButtons } from '@/components/ui/export-import-buttons';
-import { ImportPreviewModal } from '@/components/ui/import-preview-modal';
 import { Input } from '@/components/ui/input';
 import { Pagination } from '@/components/ui/pagination';
 import { PriceFilter } from '@/components/ui/price-filter';
@@ -17,7 +17,7 @@ import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IndexProps, SortField, SortProps } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Eye, MoreHorizontal, Pencil, Trash, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -27,7 +27,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Index() {
-    const { props } = usePage<any>();
+    const { props } = usePage<IndexProps & Record<string, unknown>>();
     // console.log('📦 FULL Inertia Response:', {
     //     props: JSON.parse(JSON.stringify(props)),
     //     keys: Object.keys(props),
@@ -37,7 +37,7 @@ export default function Index() {
     //     productsPerPage: props.products?.per_page
     // });
 
-    const { products, filters, perPageOptions } = props as IndexProps;
+    const { products, filters, perPageOptions } = props;
 
     const currentPerPage = products?.per_page || 2;
     
@@ -71,24 +71,21 @@ export default function Index() {
         }> = {}
     ) => {
         
-        const params = {
+        const params: Record<string, string | number | undefined> = {
             search: localSearch,
             min_price: localMinPrice,
             max_price: localMaxPrice,
             sort: sortConfig.field,
             direction: sortConfig.direction,
             per_page: products?.per_page || 2,
-            ...overrideParams, 
+            ...overrideParams,
         };
 
-        const queryParams: Record<string, any> = {};
-        Object.keys(params).forEach((key) => {
-            // @ts-ignore
-            if (params[key] !== '' && params[key] !== undefined && params[key] !== null) {
-                // @ts-ignore
-                queryParams[key] = params[key];
-            }
-        });
+        const queryParams = Object.fromEntries(
+            Object.entries(params).filter(
+                ([, param]) => param !== '' && param !== undefined && param !== null
+            )
+        );
 
         router.get(productsIndex().url, queryParams, {
             preserveScroll: true,
@@ -97,9 +94,6 @@ export default function Index() {
         });
     }, [localSearch, localMinPrice, localMaxPrice, sortConfig, products?.per_page]);
 
-    const [importErrors, setImportErrors] = useState<any[]>([]);
-    const [showImportPreview, setShowImportPreview] = useState(false);
-    
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setLocalSearch(value);
@@ -152,7 +146,7 @@ export default function Index() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head>
-                <title>Manage Products | Admin Dashboard</title>
+                <title>Manage Products | Nexus Inventory</title>
                 <meta
                     name="description"
                     content="Manage products, pricing, tags, and inventory in the admin dashboard."
@@ -208,15 +202,17 @@ export default function Index() {
                     <table className='w-full table-auto'>
                         <thead className="bg-gray-100 dark:bg-gray-800">
                             <caption className="sr-only">
-                                List of products with price, image, tags, and creation date
+                                List of products with price, quantity, status, image, tags, and creation date
                             </caption>
                             <tr className='text-left text-sm font-medium text-gray-500 dark:text-gray-300'>
                                 <th className='p-4 border-b'>#</th>
                                 <SortableHeader field="name" currentSort={sortConfig} onSort={handleSort} className='p-4 border-b'>Name</SortableHeader>
                                 <SortableHeader field="description" currentSort={sortConfig} onSort={handleSort} className='p-4 border-b'>Description</SortableHeader>
                                 <SortableHeader field="price" currentSort={sortConfig} onSort={handleSort} className='p-4 border-b'>Price</SortableHeader>
+                                <SortableHeader field="quantity" currentSort={sortConfig} onSort={handleSort} className='p-4 border-b'>Quantity</SortableHeader>
                                 <th className='p-4 border-b'>Image</th>
                                 <SortableHeader field="created_at" currentSort={sortConfig} onSort={handleSort} className='p-4 border-b'>Created Date</SortableHeader>
+                                <th className='p-4 border-b'>Status</th>
                                 <th className='p-4 border-b'>Tags</th>
                                 <th className='p-4 border-b text-right'>Actions</th>
                             </tr>
@@ -225,7 +221,7 @@ export default function Index() {
                         <tbody>
                             {products?.data?.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="p-8 text-center text-gray-500">
+                                    <td colSpan={10} className="p-8 text-center text-gray-500">
                                         No products found.
                                     </td>
                                 </tr>
@@ -237,6 +233,7 @@ export default function Index() {
                                         <td className='border-b px-4 py-2 font-medium'>{product.name}</td>
                                         <td className='border-b px-4 py-2 text-gray-500 truncate max-w-xs'>{product.description}</td>
                                         <td className='border-b px-4 py-2'>${product.price}</td>
+                                        <td className='border-b px-4 py-2'>{product.quantity}</td>
                                         <td className='border-b px-4 py-2'>
                                             {product?.image ? (
                                                 <img
@@ -252,6 +249,9 @@ export default function Index() {
                                             )}
                                         </td>
                                         <td className='border-b px-4 py-2 text-sm'>{product.created_at}</td>
+                                        <td className='border-b px-4 py-2 text-sm'>
+                                            <StatusBadge status={product.status} />
+                                        </td>
                                         <td className='border-b px-4 py-2 text-sm'>{product.tag}</td>
 
                                         <td className='border-b px-4 py-2 text-right'>
@@ -295,12 +295,6 @@ export default function Index() {
                     </table>
                 </div>
                 <Pagination products={products} perPageOptions={perPageOptions} />
-
-                <ImportPreviewModal
-                    isOpen={showImportPreview}
-                    onClose={() => setShowImportPreview(false)}
-                    errors={importErrors}
-                />
             </div>
         </AppLayout>
     );

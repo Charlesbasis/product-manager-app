@@ -24,7 +24,7 @@ export default function ImportProducts() {
         success: boolean;
         message: string;
         count?: number;
-        errors?: any[];
+        errors?: string[];
     } | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -45,13 +45,15 @@ export default function ImportProducts() {
         formData.append('file', selectedFile);
 
         try {
-            const response = await router.post('/products/import', formData, {
+            router.post('/products/import', formData, {
                 forceFormData: true,
                 onSuccess: (page) => {
+                    const flash = page.props.flash as { count?: number } | undefined;
+
                     setImportResult({
                         success: true,
                         message: 'Products imported successfully!',
-                        count: page.props.flash?.count,
+                        count: flash?.count,
                     });
                     setSelectedFile(null);
                     if (fileInputRef.current) {
@@ -62,11 +64,13 @@ export default function ImportProducts() {
                     setImportResult({
                         success: false,
                         message: 'Import failed. Please check the errors below.',
-                        errors: errors.file || [],
+                        errors: errors.file
+                            ? (Array.isArray(errors.file) ? errors.file : [errors.file])
+                            : [],
                     });
                 },
             });
-        } catch (error) {
+        } catch {
             setImportResult({
                 success: false,
                 message: 'An unexpected error occurred. Please try again.',
@@ -134,6 +138,8 @@ export default function ImportProducts() {
                                 <li>Download the template file first to see the required format</li>
                                 <li>Required fields: <strong>Name</strong> and <strong>Price</strong></li>
                                 <li>Price must be a number (e.g., 19.99)</li>
+                                <li>Quantity must be a whole number (optional, defaults to 1)</li>
+                                <li>Status must be active, draft, or archived (optional, defaults to active)</li>
                                 <li>Image URL must be a valid URL (optional)</li>
                                 <li>Tags can be comma-separated values (optional)</li>
                                 <li>Do not modify the header row in the template</li>

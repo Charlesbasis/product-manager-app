@@ -1,9 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
-import { Database, ArrowLeft } from 'lucide-react';
+import { Boxes, ArrowLeft } from 'lucide-react';
 
 export default function PrivacyPolicy() {
-    const pageTitle = "Privacy Policy | Product Manager";
-    const pageDescription = "Learn how we handle and protect your personal data at Product Manager.";
+    const pageTitle = "Privacy Policy | Nexus Inventory";
+    const pageDescription = "Learn how we handle and protect your personal data at Nexus Inventory.";
 
     return (
         <>
@@ -17,8 +17,8 @@ export default function PrivacyPolicy() {
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="flex h-16 items-center justify-between">
                             <Link href="/" className="flex items-center shrink-0">
-                                <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                <span className="ml-2 text-lg font-bold">ProductManager</span>
+                                <Boxes className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                <span className="ml-2 text-lg font-bold">Nexus Inventory</span>
                             </Link>
                             <Link
                                 href="/"
@@ -39,7 +39,7 @@ export default function PrivacyPolicy() {
                         <section className="mb-10">
                             <h2 className="text-2xl font-bold mb-4">1. Introduction</h2>
                             <p>
-                                Welcome to Product Manager. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.
+                                Welcome to Nexus Inventory. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.
                             </p>
                         </section>
 
@@ -89,7 +89,7 @@ export default function PrivacyPolicy() {
 
                 <footer className="border-t border-gray-200 bg-gray-50 py-8 dark:border-gray-800 dark:bg-gray-900">
                     <div className="mx-auto max-w-7xl px-4 text-center text-sm text-gray-600 dark:text-gray-400">
-                        © {new Date().getFullYear()} Product Manager. All rights reserved.
+                        © {new Date().getFullYear()} Nexus Inventory. All rights reserved.
                     </div>
                 </footer>
             </div>

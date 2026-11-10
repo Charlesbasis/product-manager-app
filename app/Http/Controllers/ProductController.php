@@ -21,30 +21,55 @@ class ProductController extends Controller
     // Cache duration in seconds
     private const CACHE_TTL = 300; // 5 Minutes
 
+    // Only these columns may be used in an ORDER BY clause.
+    private const SORTABLE_COLUMNS = [
+        'name',
+        'description',
+        'price',
+        'quantity',
+        'status',
+        'created_at',
+    ];
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $cacheKey = 'products_index_' . md5(json_encode($request->all()));
+        // Bump the version suffix whenever the cached payload shape changes so
+        // old entries cannot leak stale fields into the UI.
+        $cacheKey = 'products_index_v2_' . md5(json_encode($request->all()));
 
-        $products = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($request) {
+        $sort = $this->sanitizeSort($request->sort);
+        $direction = $this->sanitizeDirection($request->direction);
+
+        $products = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($request, $sort, $direction) {
             return Product::with('tags')
-                ->when($request->search, fn($q) => $q->where('name', 'like', "%{$request->search}%"))
-                ->when($request->sort, fn($q) => $q->orderBy($request->sort, $request->direction ?? 'desc'), fn($q) => $q->latest())
+                ->when($request->search, function ($query) use ($request) {
+                    $search = $request->search;
+
+                    $query->where(function ($query) use ($search) {
+                        $query->where('name', 'like', "%{$search}%")
+                            ->orWhere('description', 'like', "%{$search}%");
+                    });
+                })
+                ->when($request->filled('min_price'), fn($query) => $query->where('price', '>=', $request->min_price))
+                ->when($request->filled('max_price'), fn($query) => $query->where('price', '<=', $request->max_price))
+                ->orderBy($sort, $direction)
                 ->paginate($request->per_page ?? 10)
                 ->withQueryString();
         });
-        
+
         $products->getCollection()->transform(fn($product) => [
             'id' => $product->id,
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
+            'quantity' => (int) $product->quantity,
+            'status' => $product->status,
+            'total_value' => round((float) $product->price * (int) $product->quantity, 2),
             'created_at' => $product->created_at->format('d M Y'),
-            'image' => $product->image = $product->image
-                ? asset('storage/' . $product->image)
-                : null,
+            'image' => $product->image_url,
             'tag' => implode(', ', $product->tags->pluck('tag')->toArray()),
         ]);
 
@@ -87,8 +112,10 @@ class ProductController extends Controller
         }
 
         if ($request->filled('sort')) {
-            $direction = $request->direction ?? 'desc';
-            $query->orderBy($request->sort, $direction);
+            $query->orderBy(
+                $this->sanitizeSort($request->sort),
+                $this->sanitizeDirection($request->direction)
+            );
         } else {
             $query->latest();
         }
@@ -111,6 +138,22 @@ class ProductController extends Controller
         $perPage = $request->filled('per_page') ? (int) $request->input('per_page') : 2;
 
         return in_array($perPage, $availablePerPage) ? $perPage : 2;
+    }
+
+    /**
+     * Keep user-supplied sort columns inside a known-safe whitelist.
+     */
+    private function sanitizeSort(?string $sort): string
+    {
+        return in_array($sort, self::SORTABLE_COLUMNS, true) ? $sort : 'created_at';
+    }
+
+    /**
+     * Normalise the sort direction to a value Eloquent accepts.
+     */
+    private function sanitizeDirection(?string $direction): string
+    {
+        return $direction === 'asc' ? 'asc' : 'desc';
     }
 
     /**
@@ -245,6 +288,8 @@ class ProductController extends Controller
                 'image' => $image,
                 'image_original_name' => $imageOriginalName,
                 'price' => $request->price,
+                'quantity' => $request->quantity,
+                'status' => $request->status,
             ]);
 
             if ($request->has('tag')) {
@@ -260,6 +305,8 @@ class ProductController extends Controller
             return redirect()->back()->with('error', 'Failed to create product. Please try again.');
         } catch (Exception $e) {
             Log::error('Error creating product: ' . $e->getMessage());
+
+            return redirect()->back()->withInput()->with('error', 'Failed to create product. Please try again.');
         }
     }
 
@@ -275,10 +322,10 @@ class ProductController extends Controller
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
+            'quantity' => (int) $product->quantity,
+            'status' => $product->status,
             'created_at' => $product->created_at->format('d M Y'),
-            'image' => $product->image
-                ? asset('storage/' . $product->image)
-                : null,
+            'image' => $product->image_url,
             'tag' => $product->tags->pluck('tag')->toArray(),
             'slug' => $product->slug,
         ];
@@ -303,10 +350,10 @@ class ProductController extends Controller
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
+            'quantity' => (int) $product->quantity,
+            'status' => $product->status,
             'created_at' => $product->created_at->format('d M Y'),
-            'image' => $product->image
-                ? asset('storage/' . $product->image)
-                : null,
+            'image' => $product->image_url,
             'tag' => $product->tags->pluck('tag')->toArray(),
         ];
 
@@ -327,6 +374,8 @@ class ProductController extends Controller
             $product->name = $request->name;
             $product->description = $request->description;
             $product->price = $request->price;
+            $product->quantity = $request->quantity;
+            $product->status = $request->status;
 
             if ($request->file('image')) {
 
@@ -398,7 +447,12 @@ class ProductController extends Controller
      */
     public function export(Request $request)
     {
-        $filters = $request->only(['search', 'min_price', 'max_price', 'sort', 'direction']);
+        $filters = $request->only(['search', 'min_price', 'max_price']);
+
+        if ($request->filled('sort')) {
+            $filters['sort'] = $this->sanitizeSort($request->sort);
+            $filters['direction'] = $this->sanitizeDirection($request->direction);
+        }
 
         $fileName = 'products_' . date('Y-m-d_H-i-s') . '.xlsx';
 
@@ -455,7 +509,7 @@ class ProductController extends Controller
      */
     public function dashboardStats(Request $request)
     {
-        $cacheKey = 'dashboard_stats_' . (auth()->id() ?? 'guest');
+        $cacheKey = 'dashboard_stats_v2_' . (auth()->id() ?? 'guest');
 
         // This prevents the VPS from running 10+ aggregation queries on every dashboard visit
         return Cache::remember($cacheKey, self::CACHE_TTL, function () {
@@ -468,70 +522,100 @@ class ProductController extends Controller
      */
     private function calculateDashboardStats(): array
     {
-        // 1. Get the basic metrics (1 query)
+        // 1. Current catalog metrics (1 query)
         $metrics = Product::selectRaw('
-        COUNT(*) as total, 
-        SUM(price) as value, 
-        AVG(price) as avg, 
-        MIN(price) as min, 
-        MAX(price) as max
-    ')->first();
+            COUNT(*) as total,
+            COALESCE(SUM(quantity), 0) as total_units,
+            COALESCE(SUM(price * quantity), 0) as value,
+            COALESCE(AVG(price), 0) as avg,
+            COALESCE(MIN(price), 0) as min,
+            COALESCE(MAX(price), 0) as max
+        ')->first();
 
-        // 2. Call the helper for price buckets (6 queries)
-        $priceDistribution = $this->getPriceDistribution();
-
-        // 3. Get growth metrics (Last 30 days)
-        $currentPeriodStats = Product::where('created_at', '>=', now()->subDays(30))
-            ->selectRaw('COUNT(*) as count, SUM(price) as value')
+        // 2. Baseline catalog metrics reconstructed from created_at.
+        // Products created before 30 days ago represent the catalog at the
+        // start of the comparison window.
+        $baseline = Product::where('created_at', '<', now()->subDays(30))
+            ->selectRaw('
+                COUNT(*) as count,
+                COALESCE(SUM(price * quantity), 0) as value,
+                COALESCE(AVG(price), 0) as avg
+            ')
             ->first();
 
-        // For a simple VPS, we assume 0 for previous period to keep it fast, 
-        // or you can add the previousPeriod query here.
-        $productGrowth = $this->calculateGrowthPercentage(0, $currentPeriodStats->count);
+        $todayProducts = Product::whereDate('created_at', today())->count();
+        $yesterdayProducts = Product::whereDate('created_at', today()->subDay())->count();
+        $lastSevenDaysProducts = Product::where('created_at', '>=', now()->subDays(7))->count();
+
+        $statusSummary = Product::selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $recentProducts = Product::with('tags')
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(fn(Product $product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => (float) $product->price,
+                'quantity' => (int) $product->quantity,
+                'status' => $product->status,
+                'tag' => $product->tags->first()->tag ?? 'Uncategorized',
+                'created_at' => $product->created_at->diffForHumans(),
+            ])
+            ->values();
 
         return [
             'basic_stats' => [
                 'total_products' => (int) $metrics->total,
+                'total_units' => (int) $metrics->total_units,
                 'total_value' => (float) $metrics->value,
                 'avg_price' => (float) $metrics->avg,
                 'min_price' => (float) $metrics->min,
                 'max_price' => (float) $metrics->max,
             ],
             'growth_stats' => [
-                'products' => $productGrowth,
-                'value' => 0.0,
-                'recent_products' => (int) $metrics->total,
-                'today_products' => Product::whereDate('created_at', today())->count(),
+                'products' => $this->calculateGrowthPercentage($baseline->count, $metrics->total),
+                'value' => $this->calculateGrowthPercentage($baseline->value, $metrics->value),
+                'avg_price' => $this->calculateGrowthPercentage($baseline->avg, $metrics->avg),
+                'today_activity' => $this->calculateGrowthPercentage($yesterdayProducts, $todayProducts),
+                'last_7_days_products' => (int) $lastSevenDaysProducts,
+                'today_products' => (int) $todayProducts,
+                'yesterday_products' => (int) $yesterdayProducts,
             ],
             'status_summary' => [
-                'active' => (int) $metrics->total,
-                'draft' => 0,
+                'active' => (int) ($statusSummary['active'] ?? 0),
+                'draft' => (int) ($statusSummary['draft'] ?? 0),
+                'archived' => (int) ($statusSummary['archived'] ?? 0),
                 'total' => (int) $metrics->total,
             ],
             'category_distribution' => [],
-            'price_distribution' => $priceDistribution, // <--- CALLING IT HERE
-            'recent_products' => Product::latest()->limit(5)->get(),
+            'price_distribution' => $this->getPriceDistribution(),
+            'recent_products' => $recentProducts,
             'timestamps' => [
-                'calculated_at' => now()->toISOString()
-            ]
+                'calculated_at' => now()->toISOString(),
+                'cache_expires' => now()->addSeconds(self::CACHE_TTL)->toISOString(),
+            ],
         ];
     }
 
     /**
-     * Calculate growth percentage
+     * Calculate growth percentage.
+     *
+     * Returns null when there is no baseline, because percentage change from
+     * zero is undefined. The frontend renders "No prior data" in that case.
      */
-    private function calculateGrowthPercentage($previous, $current): float
+    private function calculateGrowthPercentage($previous, $current): ?float
     {
-        // Cast to float to ensure math works even if DB returns strings/null
         $prev = (float) ($previous ?? 0);
         $curr = (float) ($current ?? 0);
 
         if ($prev <= 0) {
-            return $curr > 0 ? 100.0 : 0.0;
+            return null;
         }
 
-        $growth = (($curr - $prev) / $prev) * 100;
-        return round($growth, 2);
+        return round((($curr - $prev) / $prev) * 100, 2);
     }
 
     /**
@@ -593,6 +677,8 @@ class ProductController extends Controller
                     'timestamp' => $product->created_at->diffForHumans(),
                     'user' => 'System',
                     'price' => $product->price,
+                    'quantity' => (int) $product->quantity,
+                    'status' => $product->status,
                     'category' => $product->tags->first()->tag ?? 'Uncategorized',
                     'product_id' => $product->id,
                     'created_at' => $product->created_at->toISOString(),

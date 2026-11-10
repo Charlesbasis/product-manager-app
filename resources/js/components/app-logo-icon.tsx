@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils';
-import { Database, type LucideProps } from 'lucide-react';
+import { Boxes, type LucideProps } from 'lucide-react';
 
 export default function AppLogoIcon(props: LucideProps) {
     return (
-        <Database
+        <Boxes
             strokeWidth={2.25}
             {...props}
             className={cn('size-5', props.className)}

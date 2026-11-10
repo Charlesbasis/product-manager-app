@@ -13,7 +13,7 @@ if (csrfToken) {
     axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
 }
 
-const appName = import.meta.env.VITE_APP_NAME || 'Product Manager';
+const appName = import.meta.env.VITE_APP_NAME || 'Nexus Inventory';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
