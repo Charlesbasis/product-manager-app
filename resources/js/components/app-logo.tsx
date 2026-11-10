@@ -7,8 +7,12 @@ export default function AppLogo() {
                 <AppLogoIcon className="size-5" />
             </div>
             <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-semibold tracking-tight">Nexus Inventory</span>
-                <span className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">Inventory Control</span>
+                <span className="truncate font-semibold tracking-tight">
+                    Nexus Inventory
+                </span>
+                <span className="truncate text-[10px] font-medium tracking-wider text-muted-foreground/80 uppercase">
+                    Inventory Control
+                </span>
             </div>
         </>
     );

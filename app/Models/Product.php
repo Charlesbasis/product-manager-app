@@ -40,8 +40,8 @@ class Product extends Model
         if (filter_var($this->image, FILTER_VALIDATE_URL)) {
             return $this->image;
         }
-        
-        return $this->image ? asset('storage/' . $this->image) : null;
+
+        return $this->image ? asset('storage/'.$this->image) : null;
     }
 
     protected static function booted()
@@ -50,5 +50,4 @@ class Product extends Model
             $product->slug = Str::slug($product->name);
         });
     }
-
 }

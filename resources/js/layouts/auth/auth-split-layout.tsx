@@ -25,7 +25,9 @@ export default function AuthSplitLayout({
                     className="relative z-20 flex items-center text-lg font-medium"
                 >
                     <AppLogoIcon className="mr-3 size-10 fill-current text-white" />
-                    <span className="text-xl font-semibold tracking-tight">{name}</span>
+                    <span className="text-xl font-semibold tracking-tight">
+                        {name}
+                    </span>
                 </Link>
                 {quote && (
                     <div className="relative z-20 mt-auto">
@@ -49,12 +51,14 @@ export default function AuthSplitLayout({
                         <AppLogoIcon className="h-10 fill-current text-black dark:text-white" />
                     </Link>
                     <div className="flex flex-col space-y-2 text-center">
-                        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight">
+                            {title}
+                        </h1>
                         <p className="text-sm text-balance text-muted-foreground">
                             {description}
                         </p>
                     </div>
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
+                    <div className="animate-in duration-500 ease-out fade-in slide-in-from-bottom-4">
                         {children}
                     </div>
                 </div>

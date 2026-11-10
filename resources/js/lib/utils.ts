@@ -1,8 +1,8 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { type ClassValue, clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import Papa from 'papaparse';
 import { saveAs } from 'file-saver';
+import Papa from 'papaparse';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -23,35 +23,42 @@ export const normalizeTag = (tag: string) => tag.trim().toLowerCase();
 
 export const generateTagSlug = (tag: string) => {
     return tag
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9-_]/g, '-')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-}
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9-_]/g, '-')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+};
 
-export const validateTagName = (tag: string) : { isValid: boolean, errors: string[] } => {
+export const validateTagName = (
+    tag: string,
+): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
 
     if (!tag.trim()) {
-        errors.push("Tag cannot be empty");
+        errors.push('Tag cannot be empty');
     }
 
     if (tag.length > 50) {
-        errors.push("Tag cannot be longer than 20 characters");
+        errors.push('Tag cannot be longer than 20 characters');
     }
 
     if (!/^[a-z0-9-_]+$/i.test(tag.trim())) {
-        errors.push("Tag can only contain letters, numbers, dashes, and underscores");
+        errors.push(
+            'Tag can only contain letters, numbers, dashes, and underscores',
+        );
     }
 
     return {
         isValid: errors.length === 0,
         errors,
     };
-}
+};
 
-export const exportToCsv = (data: Parameters<typeof Papa.unparse>[0], filename: string) => {
+export const exportToCsv = (
+    data: Parameters<typeof Papa.unparse>[0],
+    filename: string,
+) => {
     const csv = Papa.unparse(data);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, `${filename}_${Date.now()}.csv`);
@@ -78,7 +85,8 @@ export const validateImportData = (data: Array<Record<string, unknown>>) => {
     data.forEach((row, index) => {
         const rowNumber = index + 2;
         const name = typeof row.name === 'string' ? row.name.trim() : '';
-        const price = typeof row.price === 'string' ? row.price.trim() : row.price;
+        const price =
+            typeof row.price === 'string' ? row.price.trim() : row.price;
         const priceNumber = typeof price === 'number' ? price : Number(price);
 
         if (name === '') {

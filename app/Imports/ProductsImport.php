@@ -10,7 +10,7 @@ use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class ProductsImport implements ToCollection, WithHeadingRow, WithValidation, WithChunkReading
+class ProductsImport implements ToCollection, WithChunkReading, WithHeadingRow, WithValidation
 {
     /**
      * @param  Collection<int, Collection<string, mixed>>  $rows
@@ -20,7 +20,7 @@ class ProductsImport implements ToCollection, WithHeadingRow, WithValidation, Wi
         foreach ($rows as $row) {
             $imageUrl = $row['image_url'] ?? null;
 
-            if ($imageUrl && !filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+            if ($imageUrl && ! filter_var($imageUrl, FILTER_VALIDATE_URL)) {
                 $imageUrl = ltrim($imageUrl, '/');
             }
 

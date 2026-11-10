@@ -2,7 +2,7 @@ import {
     SidebarGroup,
     SidebarMenu,
     SidebarMenuButton,
-    SidebarMenuItem
+    SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { resolveUrl } from '@/lib/utils';
 import { type NavItem } from '@/types';

@@ -10,7 +10,6 @@ use App\Models\Tag;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -38,7 +37,7 @@ class ProductController extends Controller
     {
         // Bump the version suffix whenever the cached payload shape changes so
         // old entries cannot leak stale fields into the UI.
-        $cacheKey = 'products_index_v2_' . md5(json_encode($request->all()));
+        $cacheKey = 'products_index_v2_'.md5(json_encode($request->all()));
 
         $sort = $this->sanitizeSort($request->sort);
         $direction = $this->sanitizeDirection($request->direction);
@@ -53,14 +52,14 @@ class ProductController extends Controller
                             ->orWhere('description', 'like', "%{$search}%");
                     });
                 })
-                ->when($request->filled('min_price'), fn($query) => $query->where('price', '>=', $request->min_price))
-                ->when($request->filled('max_price'), fn($query) => $query->where('price', '<=', $request->max_price))
+                ->when($request->filled('min_price'), fn ($query) => $query->where('price', '>=', $request->min_price))
+                ->when($request->filled('max_price'), fn ($query) => $query->where('price', '<=', $request->max_price))
                 ->orderBy($sort, $direction)
                 ->paginate($request->per_page ?? 10)
                 ->withQueryString();
         });
 
-        $products->getCollection()->transform(fn($product) => [
+        $products->getCollection()->transform(fn ($product) => [
             'id' => $product->id,
             'name' => $product->name,
             'description' => $product->description,
@@ -104,8 +103,7 @@ class ProductController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(
-                fn($q) =>
-                $q->where('name', 'like', "%{$search}%")
+                fn ($q) => $q->where('name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
                     ->orWhere('price', 'like', "%{$search}%")
             );
@@ -165,7 +163,7 @@ class ProductController extends Controller
         $cacheParams = $request->except('page');
         ksort($cacheParams); // Sort for consistent keys
 
-        return 'products:' . md5(json_encode($cacheParams));
+        return 'products:'.md5(json_encode($cacheParams));
     }
 
     /**
@@ -175,7 +173,7 @@ class ProductController extends Controller
     {
         $userAgent = $request->header('User-Agent');
 
-        if (!$userAgent) {
+        if (! $userAgent) {
             return false;
         }
 
@@ -202,7 +200,7 @@ class ProductController extends Controller
             'developers.google.com/+/web/snippet',
             'whatsapp',
             'slackbot',
-            'discordbot'
+            'discordbot',
         ];
 
         foreach ($bots as $bot) {
@@ -219,7 +217,7 @@ class ProductController extends Controller
      */
     private function setCacheHeaders(bool $isBot): void
     {
-        if (!headers_sent()) {
+        if (! headers_sent()) {
             if ($isBot) {
                 // Tell bots they can cache but not for long
                 header('Cache-Control: public, max-age=60, s-maxage=60');
@@ -266,7 +264,7 @@ class ProductController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     * @param ProductFormRequest $request
+     *
      * @return \Illuminate\Http\RedirectResponse
      */
     public function store(ProductFormRequest $request)
@@ -304,7 +302,7 @@ class ProductController extends Controller
 
             return redirect()->back()->with('error', 'Failed to create product. Please try again.');
         } catch (Exception $e) {
-            Log::error('Error creating product: ' . $e->getMessage());
+            Log::error('Error creating product: '.$e->getMessage());
 
             return redirect()->back()->withInput()->with('error', 'Failed to create product. Please try again.');
         }
@@ -415,7 +413,7 @@ class ProductController extends Controller
         $tagIds = [];
         foreach ($tagNames as $tagName) {
             $tagName = trim($tagName);
-            if (!empty($tagName)) {
+            if (! empty($tagName)) {
                 $tag = Tag::firstOrCreate(['tag' => $tagName]);
                 $tagIds[] = $tag->id;
             }
@@ -435,7 +433,7 @@ class ProductController extends Controller
             $product->delete();
 
             $this->clearAllProductCache();
-            
+
             return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
         }
 
@@ -454,7 +452,7 @@ class ProductController extends Controller
             $filters['direction'] = $this->sanitizeDirection($request->direction);
         }
 
-        $fileName = 'products_' . date('Y-m-d_H-i-s') . '.xlsx';
+        $fileName = 'products_'.date('Y-m-d_H-i-s').'.xlsx';
 
         return Excel::download(new ProductsExport($filters), $fileName);
     }
@@ -469,12 +467,12 @@ class ProductController extends Controller
         ]);
 
         try {
-            $import = new ProductsImport();
+            $import = new ProductsImport;
             Excel::import($import, $request->file('file'));
 
             return response()->json([
                 'success' => true,
-                'message' => "Products imported successfully.",
+                'message' => 'Products imported successfully.',
             ]);
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             $failures = $e->failures();
@@ -495,11 +493,11 @@ class ProductController extends Controller
                 'errors' => $errors,
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Import error: ' . $e->getMessage());
+            Log::error('Import error: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Import failed: ' . $e->getMessage(),
+                'message' => 'Import failed: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -509,7 +507,7 @@ class ProductController extends Controller
      */
     public function dashboardStats(Request $request)
     {
-        $cacheKey = 'dashboard_stats_v2_' . (auth()->id() ?? 'guest');
+        $cacheKey = 'dashboard_stats_v2_'.(auth()->id() ?? 'guest');
 
         // This prevents the VPS from running 10+ aggregation queries on every dashboard visit
         return Cache::remember($cacheKey, self::CACHE_TTL, function () {
@@ -555,7 +553,7 @@ class ProductController extends Controller
             ->latest()
             ->limit(5)
             ->get()
-            ->map(fn(Product $product) => [
+            ->map(fn (Product $product) => [
                 'id' => $product->id,
                 'name' => $product->name,
                 'price' => (float) $product->price,
@@ -638,8 +636,8 @@ class ProductController extends Controller
 
         foreach ($buckets as $bucket) {
             $count = Product::query()
-                ->when($bucket['min'] !== null, fn($q) => $q->where('price', '>=', $bucket['min']))
-                ->when($bucket['max'] !== null, fn($q) => $q->where('price', '<', $bucket['max']))
+                ->when($bucket['min'] !== null, fn ($q) => $q->where('price', '>=', $bucket['min']))
+                ->when($bucket['max'] !== null, fn ($q) => $q->where('price', '<', $bucket['max']))
                 ->count();
 
             $distribution[] = [
@@ -697,7 +695,6 @@ class ProductController extends Controller
     {
         // On a Shared VPS, we use a simple flush to guarantee no stale SEO data.
         // If you use Redis, you can use Cache::tags(['products'])->flush();
-        Cache::flush(); 
+        Cache::flush();
     }
-
 }
