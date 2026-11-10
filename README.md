@@ -68,9 +68,10 @@ Small businesses and e-commerce stores struggle with:
 ## Prerequisites
 
 - PHP 8.2 or higher
-- Composer
-- Node.js 22 or higher
-- MySQL, PostgreSQL, or SQLite (for development)
+- Composer 2
+- Node.js 22 LTS or higher
+- pnpm 12.18.0 (`corepack enable` will pick it up from `packageManager`)
+- SQLite (default), MySQL or PostgreSQL (for development)
 - Git
 
 ## Installation
@@ -91,7 +92,7 @@ Small businesses and e-commerce stores struggle with:
 3. **Install Node dependencies**
 
     ```bash
-    npm install
+    pnpm install
     ```
 
 4. **Copy environment file**
@@ -117,7 +118,7 @@ Small businesses and e-commerce stores struggle with:
 7. **Build assets**
 
     ```bash
-    npm run build
+    pnpm run build
     ```
 
 8. **Start development server**
@@ -132,14 +133,17 @@ Small businesses and e-commerce stores struggle with:
 
 Key configuration options in `.env`:
 
-| Variable         | Description      | Default                  |
-| ---------------- | ---------------- | ------------------------ |
-| `APP_NAME`       | Application name | Nexus Inventory          |
-| `APP_URL`        | Application URL  | http://localhost:8000    |
-| `DB_CONNECTION`  | Database driver  | sqlite                   |
-| `DB_DATABASE`    | Database name    | database/database.sqlite |
-| `MAIL_MAILER`    | Mail driver      | log                      |
-| `SESSION_DRIVER` | Session driver   | file                     |
+| Variable              | Description                 | Default                  |
+| --------------------- | --------------------------- | ------------------------ |
+| `APP_NAME`            | Application name            | Nexus Inventory          |
+| `APP_URL`             | Application URL             | http://localhost:8000    |
+| `DB_CONNECTION`       | Database driver             | sqlite                   |
+| `DB_DATABASE`         | Database file or name       | database/database.sqlite |
+| `DB_JOURNAL_MODE`     | SQLite journal mode         | WAL                      |
+| `MAIL_MAILER`         | Mail driver                 | log                      |
+| `SESSION_DRIVER`      | Session driver              | database                 |
+| `INERTIA_SSR_ENABLED` | Enable Inertia SSR          | true                     |
+| `SITEMAP_PATH`        | Absolute sitemap output     | public/sitemap.xml       |
 
 ## Available Commands
 
@@ -153,17 +157,17 @@ composer run dev
 composer run dev:ssr
 
 # Run Vite only
-npm run dev
+pnpm run dev
 ```
 
 ### Building
 
 ```bash
 # Build frontend assets
-npm run build
+pnpm run build
 
 # Build with SSR
-npm run build:ssr
+pnpm run build:ssr
 ```
 
 ### Testing
@@ -183,17 +187,128 @@ composer test
 vendor/bin/pint
 
 # Format frontend code (Prettier)
-npm run format
+pnpm run format
 
 # Check frontend formatting
-npm run format:check
+pnpm run format:check
 
 # Lint frontend code
-npm run lint
+pnpm run lint
 
 # TypeScript type checking
-npm run types
+pnpm run types
 ```
+
+## Deployment
+
+Production uses immutable releases behind an atomic `current` symlink. CI
+builds and tests the application, ships one tarball, and the server only
+extracts and activates it. Composer, pnpm and Vite never run on the VPS.
+
+### Server layout
+
+```
+/home/cvhowlad/app3.cvhowlader.com/
+├── current -> releases/<sha>     atomic symlink
+├── previous -> releases/<sha>    rollback target
+├── releases/<sha>/               app, vendor/, public/build, bootstrap/ssr
+├── shared/
+│   ├── .env                      mode 600, never in CI
+│   ├── deploy.env                PHP/PM2 paths + health URL
+│   ├── database/database.sqlite  absolute DB_DATABASE, WAL files live here
+│   ├── storage/                  uploads, logs, cache, sessions, views
+│   └── backups/db-*.sqlite.gz
+├── public/                       REAL CWP docroot, never a symlink
+├── deploy/                       activate, rollback, backup, health, setup
+└── tmp/
+```
+
+`public/index.php` is a stable shim that requires
+`../current/public/index.php`; the rest of the release's `public/` is copied
+into the real docroot (hashed assets are additive, `manifest.json` is replaced
+atomically). This keeps CWP's auto-SSL, `open_basedir` and
+`disable_symlinks if_not_owner` behaviour intact.
+
+### One-time setup
+
+Run as the deploy user (no sudo), from a checkout or a copy of the `deploy/`
+directory on the server:
+
+```bash
+bash deploy/server-setup.sh --adopt-sqlite --with-cron
+```
+
+`server-setup.sh` seeds `shared/.env` from the existing `$BASE/.env` (keeping
+`APP_KEY` intact), copies the live database with `sqlite3 .backup`, and points
+the legacy `.env` at the same shared file, so there is no split-brain between
+the old in-place app and the first atomic release. Use
+`.env.production.example` only as a reference for keys to add or change, for
+example:
+
+```dotenv
+APP_DEBUG=false
+LOG_STACK=daily
+QUEUE_CONNECTION=sync
+SITEMAP_PATH=/home/cvhowlad/app3.cvhowlader.com/public/sitemap.xml
+```
+
+Never copy the template over `shared/.env`; doing so would discard the
+production `APP_KEY`. The CWP document root is never changed.
+
+After the first successful deploy, ask the host admin for reboot persistence:
+
+```bash
+pm2 startup systemd -u "$USER" --hp "$HOME"
+pm2 save
+```
+
+### GitHub configuration
+
+Repository variables:
+
+| Variable          | Purpose                                  |
+| ----------------- | ---------------------------------------- |
+| `DEPLOY_HOST`     | SSH host (falls back to `REMOTE_HOST`)   |
+| `DEPLOY_USER`     | SSH user (falls back to `REMOTE_USER`)   |
+| `DEPLOY_PATH`     | Absolute base directory on the server    |
+| `DEPLOY_PORT`     | SSH port (defaults to 22)                |
+
+Secrets:
+
+| Secret                  | Purpose                                      |
+| ----------------------- | -------------------------------------------- |
+| `SSH_PRIVATE_KEY`       | Deploy key                                   |
+| `SSH_HOST_FINGERPRINT`  | Pinned host key (`ssh-keyscan` SHA256 value) |
+| `REMOTE_HOST`/`REMOTE_USER` | Optional legacy fallbacks                |
+
+The workflow fails if any required value is missing and refuses to connect
+without a pinned fingerprint. Mark the `tests` and `linter` workflows as
+required status checks on `master` so branch protection enforces the same gates
+as the deploy workflow.
+
+### Deploy and rollback
+
+- Push to `master`: required gates → build tarball → upload → extract into
+  `releases/<sha>.tmp` → activate.
+- Activation backs up SQLite, migrates, warms caches, publishes assets, swaps
+  `current`, restarts PM2, regenerates the sitemap, and runs health checks. Any
+  failure restores the previous release automatically.
+- Manual rollback: run the `deploy` workflow with `rollback_to=<release-id>`.
+  The workflow skips the gates and build so a rollback stays fast.
+- Database migrations are **not** reversed by a rollback. Restore
+  `shared/backups/db-*.sqlite.gz` if the older code needs the old schema.
+
+SQLite backups use `sqlite3 .backup` (safe with WAL) and are verified with
+`PRAGMA integrity_check` before gzip. A deploy warns, but does not fail, if the
+`jobs` table has pending rows and no worker exists.
+
+### SSR process
+
+PM2 stays in `fork` mode with `instances: 1`. The host has `nproc=40` and no
+swap; cluster mode previously caused an SSR crash loop. Do not switch to
+cluster until the sysadmin raises the limits and a load test passes. Logs are
+rotated by `pm2-logrotate` (10M, 14 files, compressed) and there is no nightly
+`cron_restart`; use the five-minute health cron and external monitoring instead.
 
 ## Project Structure
 
