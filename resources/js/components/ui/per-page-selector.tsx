@@ -1,6 +1,6 @@
 import { PerPageSelectorProps } from "@/types";
 import { router } from "@inertiajs/react";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import { Label } from "./label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
@@ -12,6 +12,12 @@ export const PerPageSelector = ({
     className,
 }: PerPageSelectorProps) => {
     const [selectedPerPage, setSelectedPerPage] = React.useState<string>(String(currentPerPage));
+    const [prevCurrentPerPage, setPrevCurrentPerPage] = React.useState<number>(currentPerPage);
+
+    if (currentPerPage !== prevCurrentPerPage) {
+        setPrevCurrentPerPage(currentPerPage);
+        setSelectedPerPage(String(currentPerPage));
+    }
 
     const handlePerPageChange = useCallback((value: string) => {
         setSelectedPerPage(value);
@@ -34,10 +40,6 @@ export const PerPageSelector = ({
             replace: true,
         });
     }, [filters, route]);
-
-    useEffect(() => {
-        setSelectedPerPage(String(currentPerPage));
-    }, [currentPerPage]);
 
     // console.log('from page select perPageOptions:', perPageOptions)
     // console.log('from page select selectedPerPage:', selectedPerPage)

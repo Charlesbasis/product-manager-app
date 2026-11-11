@@ -102,12 +102,7 @@ export interface PaginationData {
 
 type SortDirection = 'asc' | 'desc';
 type SortField =
-    | 'name'
-    | 'description'
-    | 'price'
-    | 'quantity'
-    | 'status'
-    | 'created_at';
+    'name' | 'description' | 'price' | 'quantity' | 'status' | 'created_at';
 
 export interface SortProps {
     field: SortField;
