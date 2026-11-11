@@ -60,8 +60,7 @@ export default function ImportProducts() {
                 forceFormData: true,
                 onSuccess: (page) => {
                     const flash = page.props.flash as
-                        | { count?: number }
-                        | undefined;
+                        { count?: number } | undefined;
 
                     setImportResult({
                         success: true,
