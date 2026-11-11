@@ -269,6 +269,11 @@ pm2 startup systemd -u "$USER" --hp "$HOME"
 pm2 save
 ```
 
+This host caps `cvhowlad` at 40 processes/threads. The deploy scripts set
+`UV_THREADPOOL_SIZE=2` for PM2 and the SSR app so activation fits under that
+cap. `pm2 install pm2-logrotate` can still fail with `spawn /bin/sh EAGAIN`;
+ask the host admin to raise `nproc` (for example to 200) and retry it.
+
 ### GitHub configuration
 
 Repository variables:

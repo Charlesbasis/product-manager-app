@@ -59,6 +59,12 @@ ASSET_RETENTION_DAYS="${ASSET_RETENTION_DAYS:-14}"
 SSR_APP_NAME="${SSR_APP_NAME:-laravel-ssr}"
 STAGING="${STAGING:-0}"
 
+# This host caps cvhowlad at 40 processes/threads. PM2, its CLI and the SSR
+# app are all Node processes; a smaller libuv pool keeps a deploy and PM2
+# restart under the cap. Raise the limit and remove this when the host allows.
+UV_THREADPOOL_SIZE="${UV_THREADPOOL_SIZE:-2}"
+export UV_THREADPOOL_SIZE
+
 # Fail fast when the deploy shell and the web runtime disagree. `server-setup`
 # rewrites deploy.env on existing installations so a stale PHP_BIN cannot win.
 require_php85() {

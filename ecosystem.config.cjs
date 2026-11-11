@@ -28,6 +28,10 @@ module.exports = {
             restart_delay: 2000,
             merge_logs: true,
             log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+            env: {
+                // Keep the SSR process inside the host's 40-process cap.
+                UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE || '2',
+            },
             out_file: path.join(logDir, 'ssr-out.log'),
             error_file: path.join(logDir, 'ssr-error.log'),
         },
