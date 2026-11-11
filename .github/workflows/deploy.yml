@@ -184,6 +184,9 @@ jobs:
           fingerprint: ${{ env.SSH_HOST_FINGERPRINT }}
           source: dist/release.tar.gz
           target: ${{ env.DEPLOY_PATH }}
+          # The artifact is uploaded from dist/; strip that leading directory
+          # so activate fills $DEPLOY_PATH/release.tar.gz, not dist/release.tar.gz.
+          strip_components: 1
           overwrite: true
           timeout: 60s
           command_timeout: 5m
