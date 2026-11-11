@@ -271,8 +271,10 @@ pm2 save
 
 This host caps `cvhowlad` at 40 processes/threads. The deploy scripts set
 `UV_THREADPOOL_SIZE=2` for PM2 and the SSR app so activation fits under that
-cap. `pm2 install pm2-logrotate` can still fail with `spawn /bin/sh EAGAIN`;
-ask the host admin to raise `nproc` (for example to 200) and retry it.
+cap. `pm2 install` spawns another Node process: it can fail with
+`spawn /bin/sh EAGAIN`, or hang while holding the cap. A hung installer blocks
+every new SSH session with `exec request failed on channel 0` until it exits, so
+raise `nproc` (for example to 200) before installing PM2 modules.
 
 ### GitHub configuration
 
@@ -294,9 +296,23 @@ Secrets:
 | `REMOTE_HOST`/`REMOTE_USER` | Optional legacy fallbacks                |
 
 The workflow fails if any required value is missing and refuses to connect
-without a pinned fingerprint. Mark the `tests` and `linter` workflows as
-required status checks on `master` so branch protection enforces the same gates
-as the deploy workflow.
+without a pinned fingerprint.
+
+The fingerprint must be the key the action actually negotiates, not just any
+key the host publishes. `appleboy/scp-action` and `appleboy/ssh-action` use
+`golang.org/x/crypto/ssh`, whose host-key preference list puts ECDSA ahead of
+RSA and ED25519. Pin the ECDSA key:
+
+```bash
+ssh-keyscan -t ecdsa "$DEPLOY_HOST" | ssh-keygen -lf -
+```
+
+Pinning the RSA or ED25519 fingerprint fails with
+`ssh: host key fingerprint mismatch` even though that key also belongs to the
+host. Re-check the fingerprint after a host-key rotation.
+
+Mark the `tests` and `linter` workflows as required status checks on `master`
+so branch protection enforces the same gates as the deploy workflow.
 
 ### Deploy and rollback
 
