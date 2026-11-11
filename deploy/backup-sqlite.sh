@@ -40,5 +40,8 @@ chmod 600 "$OUT"
 
 log "wrote $OUT ($(du -h "$OUT" | cut -f1))"
 
-find "$BACKUP_DIR" -maxdepth 1 -name 'db-*.sqlite.gz' \
-    -mtime +"$BACKUP_RETENTION_DAYS" -delete 2>/dev/null || true
+# Keep only the most recent backups (count-based retention).
+# This avoids accumulating dozens of backups on days with multiple deploys.
+if [ -n "${BACKUP_RETENTION_COUNT:-}" ] && [ "${BACKUP_RETENTION_COUNT}" -gt 0 ]; then
+    ls -1t "$BACKUP_DIR"/db-*.sqlite.gz 2>/dev/null | tail -n +"$((BACKUP_RETENTION_COUNT + 1))" | xargs -r rm -f --
+fi
