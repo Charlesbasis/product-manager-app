@@ -4,7 +4,7 @@ const axiosInstance = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000',
     headers: {
         'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json',
+        Accept: 'application/json',
     },
     withCredentials: true, // Important for Laravel Sanctum/sessions
     timeout: 10000, // 10 seconds timeout
@@ -17,7 +17,7 @@ axiosInstance.interceptors.request.use(
             const token = getCSRFToken();
             if (token) {
                 config.headers['X-CSRF-TOKEN'] = token;
-                
+
                 // For form data, also add _token parameter
                 if (config.data instanceof FormData) {
                     config.data.append('_token', token);
@@ -28,7 +28,7 @@ axiosInstance.interceptors.request.use(
     },
     (error) => {
         return Promise.reject(error);
-    }
+    },
 );
 
 axiosInstance.interceptors.response.use(
@@ -41,27 +41,33 @@ axiosInstance.interceptors.response.use(
             return refreshCSRFTokenAndRetry(error.config);
         }
         return Promise.reject(error);
-    }
+    },
 );
 
 function getCSRFToken(): string | null {
     if (typeof document !== 'undefined') {
-        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+        return (
+            document
+                .querySelector('meta[name="csrf-token"]')
+                ?.getAttribute('content') || null
+        );
     }
     return null;
 }
 
-async function refreshCSRFTokenAndRetry(originalRequest: InternalAxiosRequestConfig) {
+async function refreshCSRFTokenAndRetry(
+    originalRequest: InternalAxiosRequestConfig,
+) {
     try {
         // Fetch new CSRF token from Laravel
         await axios.get('/sanctum/csrf-cookie');
-        
+
         // Update the meta tag with new token if needed
         const newToken = getCSRFToken();
         if (newToken && originalRequest.headers) {
             originalRequest.headers['X-CSRF-TOKEN'] = newToken;
         }
-        
+
         // Retry the original request
         return axiosInstance(originalRequest);
     } catch (error) {

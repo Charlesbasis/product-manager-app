@@ -2,6 +2,11 @@
     "$schema": "https://json.schemastore.org/package.json",
     "private": true,
     "type": "module",
+    "packageManager": "pnpm@12.18.0",
+    "engines": {
+        "node": ">=22.12.0",
+        "pnpm": ">=12.18.0"
+    },
     "scripts": {
         "ssr": "node bootstrap/ssr/ssr.js",
         "build": "vite build",
@@ -9,7 +14,8 @@
         "dev": "vite",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
-        "lint": "eslint . --fix",
+        "lint": "eslint . --max-warnings=0",
+        "lint:fix": "eslint . --fix",
         "types": "tsc --noEmit"
     },
     "devDependencies": {

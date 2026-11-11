@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 
@@ -53,7 +52,7 @@ class BlogController extends Controller
 
             $post = $response->json()[0] ?? null;
 
-            if (!$post) {
+            if (! $post) {
                 abort(404);
             }
 

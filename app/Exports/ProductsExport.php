@@ -10,7 +10,7 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ProductsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
+class ProductsExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     private const SORTABLE_COLUMNS = [
         'name',
@@ -34,23 +34,23 @@ class ProductsExport implements FromCollection, WithHeadings, WithMapping, Shoul
 
         // Apply filters (same as the index page). The search clause is grouped
         // so it cannot bypass the price filters.
-        if (!empty($this->filters['search'])) {
+        if (! empty($this->filters['search'])) {
             $search = $this->filters['search'];
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('description', 'like', '%' . $search . '%');
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%');
             });
         }
 
-        if (!empty($this->filters['min_price'])) {
+        if (! empty($this->filters['min_price'])) {
             $query->where('price', '>=', $this->filters['min_price']);
         }
 
-        if (!empty($this->filters['max_price'])) {
+        if (! empty($this->filters['max_price'])) {
             $query->where('price', '<=', $this->filters['max_price']);
         }
 
-        if (!empty($this->filters['sort'])) {
+        if (! empty($this->filters['sort'])) {
             $sort = in_array($this->filters['sort'], self::SORTABLE_COLUMNS, true)
                 ? $this->filters['sort']
                 : 'created_at';

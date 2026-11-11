@@ -29,7 +29,15 @@ class GenerateSitemap extends Command
      */
     public function handle()
     {
-        $path = public_path('sitemap.xml');
+        $path = config('sitemap.path') ?: public_path('sitemap.xml');
+
+        $directory = dirname($path);
+
+        if (! is_dir($directory)) {
+            $this->error("Sitemap directory does not exist: {$directory}");
+
+            return self::FAILURE;
+        }
 
         $this->info("Generating sitemap to: {$path}");
 
@@ -96,11 +104,13 @@ class GenerateSitemap extends Command
                 }
             }
         } catch (\Exception $e) {
-            $this->error('Failed to fetch blog posts for sitemap: ' . $e->getMessage());
+            $this->error('Failed to fetch blog posts for sitemap: '.$e->getMessage());
         }
 
         $sitemap->writeToFile($path);
 
         $this->info('Sitemap generated successfully!');
+
+        return self::SUCCESS;
     }
 }

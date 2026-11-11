@@ -101,7 +101,13 @@ export interface PaginationData {
 }
 
 type SortDirection = 'asc' | 'desc';
-type SortField = 'name' | 'description' | 'price' | 'quantity' | 'status' | 'created_at';
+type SortField =
+    | 'name'
+    | 'description'
+    | 'price'
+    | 'quantity'
+    | 'status'
+    | 'created_at';
 
 export interface SortProps {
     field: SortField;
@@ -132,13 +138,13 @@ export interface TagManagementProps {
 }
 
 export interface TagComboboxProps {
-  initialTags: string[]
-  availableTags: string[]
-  onTagsChange: (tags: string[]) => void
-  isViewMode?: boolean
-  isSubmitting?: boolean
-  maxTags?: number
-  errors?: string
+    initialTags: string[];
+    availableTags: string[];
+    onTagsChange: (tags: string[]) => void;
+    isViewMode?: boolean;
+    isSubmitting?: boolean;
+    maxTags?: number;
+    errors?: string;
 }
 
 export interface TagState {
@@ -241,36 +247,36 @@ export interface ActivityResponse {
 }
 
 export interface DashboardStats {
-  totalProducts: number;
-  totalUnits: number;
-  totalValue: number;
-  avgPrice: number;
-  minPrice: number;
-  maxPrice: number;
-  recentActivity: number;
-  todayProducts: number;
-  yesterdayProducts: number;
-  growth: {
-    products: number | null;
-    value: number | null;
-    avgPrice: number | null;
-    todayActivity: number | null;
-  };
-  statusSummary: {
-    active: number;
-    draft: number;
-    archived: number;
-    total: number;
-  };
-  categoryDistribution: Array<{
-    name: string;
-    count: number;
-    percentage: number;
-  }>;
-  priceDistribution: Array<{
-    label: string;
-    count: number;
-    min: number | null;
-    max: number | null;
-  }>;
+    totalProducts: number;
+    totalUnits: number;
+    totalValue: number;
+    avgPrice: number;
+    minPrice: number;
+    maxPrice: number;
+    recentActivity: number;
+    todayProducts: number;
+    yesterdayProducts: number;
+    growth: {
+        products: number | null;
+        value: number | null;
+        avgPrice: number | null;
+        todayActivity: number | null;
+    };
+    statusSummary: {
+        active: number;
+        draft: number;
+        archived: number;
+        total: number;
+    };
+    categoryDistribution: Array<{
+        name: string;
+        count: number;
+        percentage: number;
+    }>;
+    priceDistribution: Array<{
+        label: string;
+        count: number;
+        min: number | null;
+        max: number | null;
+    }>;
 }

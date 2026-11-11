@@ -1,6 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
-import { Boxes, ArrowLeft, Calendar } from 'lucide-react';
 import PublicFooter from '@/components/public-footer';
+import { Head, Link } from '@inertiajs/react';
+import { ArrowLeft, Boxes, Calendar } from 'lucide-react';
 
 interface Post {
     id: number;
@@ -21,9 +21,14 @@ export default function BlogPost({ post }: { post: Post }) {
                         <div className="flex h-16 items-center justify-between">
                             <Link href="/" className="flex items-center">
                                 <Boxes className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                <span className="ml-2 text-lg font-bold">Nexus Inventory</span>
+                                <span className="ml-2 text-lg font-bold">
+                                    Nexus Inventory
+                                </span>
                             </Link>
-                            <Link href="/blog" className="inline-flex items-center text-sm font-medium hover:text-blue-600">
+                            <Link
+                                href="/blog"
+                                className="inline-flex items-center text-sm font-medium hover:text-blue-600"
+                            >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back to Blog
                             </Link>
@@ -38,7 +43,7 @@ export default function BlogPost({ post }: { post: Post }) {
                                 <Calendar className="mr-2 h-4 w-4" />
                                 {post.date}
                             </div>
-                            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
+                            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl dark:text-white">
                                 {post.title}
                             </h1>
                         </header>
@@ -54,7 +59,7 @@ export default function BlogPost({ post }: { post: Post }) {
                         )}
 
                         <div
-                            className="prose prose-lg dark:prose-invert prose-blue max-w-none prose-img:rounded-xl prose-headings:text-slate-900 dark:prose-headings:text-white"
+                            className="prose prose-lg dark:prose-invert prose-blue prose-img:rounded-xl prose-headings:text-slate-900 dark:prose-headings:text-white max-w-none"
                             dangerouslySetInnerHTML={{ __html: post.content }}
                         />
                     </article>

@@ -100,7 +100,7 @@ class ProductTest extends TestCase
         $tag = Tag::firstOrCreate(['tag' => 'Smartphones']);
         $product->tags()->sync([$tag->id]);
 
-        $row = (new ProductsExport())->map($product->fresh('tags'));
+        $row = (new ProductsExport)->map($product->fresh('tags'));
 
         $this->assertSame(5, $row[4]);
         $this->assertSame(995.0, $row[5]);

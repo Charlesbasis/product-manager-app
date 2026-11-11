@@ -8,15 +8,43 @@ export default function PublicFooter() {
                 <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
                     <div className="flex items-center">
                         <Boxes className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                        <span className="ml-2 text-lg font-bold">Nexus Inventory</span>
+                        <span className="ml-2 text-lg font-bold">
+                            Nexus Inventory
+                        </span>
                     </div>
 
-                    <div className="flex flex-col items-center gap-4 text-sm text-gray-600 dark:text-gray-400 md:flex-row md:gap-8">
-                        <p>© {new Date().getFullYear()} Nexus Inventory by <a href="https://www.cvhowlader.com" target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-blue-600">CVHowlader</a>. All rights reserved.</p>
+                    <div className="flex flex-col items-center gap-4 text-sm text-gray-600 md:flex-row md:gap-8 dark:text-gray-400">
+                        <p>
+                            © {new Date().getFullYear()} Nexus Inventory by{' '}
+                            <a
+                                href="https://www.cvhowlader.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-semibold hover:text-blue-600"
+                            >
+                                CVHowlader
+                            </a>
+                            . All rights reserved.
+                        </p>
                         <nav className="flex gap-4">
-                            <Link href="/privacy-policy" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Privacy Policy</Link>
-                            <Link href="/terms-of-service" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Terms of Service</Link>
-                            <Link href="/cookie-policy" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Cookie Policy</Link>
+                            <Link
+                                href="/privacy-policy"
+                                className="transition-colors hover:text-blue-600 dark:hover:text-blue-400"
+                            >
+                                Privacy Policy
+                            </Link>
+                            <Link
+                                href="/terms-of-service"
+                                className="transition-colors hover:text-blue-600 dark:hover:text-blue-400"
+                            >
+                                Terms of Service
+                            </Link>
+                            <Link
+                                href="/cookie-policy"
+                                className="transition-colors hover:text-blue-600 dark:hover:text-blue-400"
+                            >
+                                Cookie Policy
+                            </Link>
                         </nav>
                     </div>
                 </div>

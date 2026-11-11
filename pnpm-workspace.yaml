@@ -1,5 +1,9 @@
 packages:
   - '.'
 
+# pnpm 12 reads project settings from this file, not from .npmrc.
+engineStrict: true
+
+# Only packages that genuinely need lifecycle scripts may run them.
 allowBuilds:
   esbuild: true

@@ -1,56 +1,305 @@
-name: Deploy Laravel + React 
+name: deploy
 
 on:
   push:
     branches: [master]
+  workflow_dispatch:
+    inputs:
+      rollback_to:
+        description: 'Release id to roll back to (leave empty for a normal deploy)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Required gates. A failing test, lint or type check blocks the build, and a
+  # failing build blocks the deploy.
+  tests:
+    if: github.event_name == 'push' || inputs.rollback_to == ''
+    uses: ./.github/workflows/tests.yml
+
+  lint:
+    if: github.event_name == 'push' || inputs.rollback_to == ''
+    uses: ./.github/workflows/lint.yml
+
+  build:
+    name: Build release artifact
+    needs: [tests, lint]
+    if: github.event_name == 'push' || inputs.rollback_to == ''
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
 
-      - name: ⚙️ Setup PHP & Node
-        uses: shivammathur/setup-php@v2
-        with: { php-version: '8.2.30' }
-        
-      - uses: pnpm/action-setup@v3
-        with: { version: 9 }
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+          extensions: mbstring, intl, gd, zip, bcmath, exif, curl, dom, fileinfo, pdo_sqlite, sqlite3
 
-      # 1. Create .env file (Artisan needs this)
-      - name: 📝 Prepare Environment
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 12.18.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Prepare build environment
         run: cp .env.example .env
 
-      # 2. Install PHP dependencies FIRST
-      - name: 📦 Install PHP Dependencies
-        run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      # vendor/ is built once here with production dependencies. The server
+      # never runs Composer, pnpm or Vite.
+      - name: Install production PHP dependencies
+        run: >-
+          composer install
+          --no-dev
+          --no-scripts
+          --no-ansi
+          --no-interaction
+          --no-progress
+          --prefer-dist
+          --optimize-autoloader
+          --classmap-authoritative
 
-      # 3. Now install JS and Build
-      - name: 📦 Install & Build (Frontend SSR)
+      - name: Generate throwaway build key
+        run: php artisan key:generate --force
+
+      - name: Discover packages
+        run: php artisan package:discover --ansi --no-interaction
+
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend and SSR bundle
+        run: pnpm run build:ssr
+
+      - name: Create release tarball
         run: |
-          pnpm install --frozen-lockfile
-          pnpm run build:ssr
+          tar -czf release.tar.gz \
+            --exclude='bootstrap/cache/*.php' \
+            --exclude='database/*.sqlite*' \
+            --exclude='public/hot' \
+            --exclude='public/storage' \
+            --exclude='public/build/hot' \
+            app bootstrap config database deploy public resources routes vendor \
+            artisan composer.json composer.lock ecosystem.config.cjs
 
-      # 5. Sync to VPS
-      - name: Deploy to Server
-        uses: easingthemes/ssh-deploy@v5.1.0
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-          REMOTE_USER: ${{ secrets.REMOTE_USER }}
-          TARGET: "/home/cvhowlad/app3.cvhowlader.com"
-          SOURCE: "./"
-          EXCLUDE: ".env,.env.*"
-          REMOTE_PORT: 22
+      - name: Verify release contents
+        run: |
+          set -euo pipefail
+          tar -tzf release.tar.gz > release.list
 
-      # 6. Post-Deployment
-      - name: 🧩 Post-Deployment
-        uses: appleboy/ssh-action@v1.2.0
+          for required in \
+            artisan \
+            vendor/autoload.php \
+            public/.htaccess \
+            public/build/manifest.json \
+            bootstrap/ssr/ssr.js \
+            ecosystem.config.cjs \
+            deploy/activate.sh; do
+            grep -qx "$required" release.list || {
+              echo "::error::release is missing $required"
+              exit 1
+            }
+          done
+
+          if grep -Eq '(^|/)\.env($|\.)' release.list; then
+            echo "::error::release contains an .env file"
+            exit 1
+          fi
+
+          if grep -Eq '^(tests/|node_modules/|\.git/|storage/)' release.list; then
+            echo "::error::release contains development or runtime data"
+            exit 1
+          fi
+
+          echo "release size: $(du -h release.tar.gz | cut -f1)"
+          echo "release files: $(wc -l < release.list)"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          host: ${{ secrets.REMOTE_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          name: release
+          path: release.tar.gz
+          if-no-files-found: error
+          retention-days: 3
+
+  deploy:
+    name: Deploy to production
+    needs: build
+    if: github.event_name == 'push' || inputs.rollback_to == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST || secrets.REMOTE_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || secrets.REMOTE_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_HOST_FINGERPRINT: ${{ secrets.SSH_HOST_FINGERPRINT }}
+
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release
+          path: dist
+
+      - name: Verify deploy configuration
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH SSH_PRIVATE_KEY SSH_HOST_FINGERPRINT; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured (repository variable or secret)"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Upload release tarball
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ env.DEPLOY_HOST }}
+          username: ${{ env.DEPLOY_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          port: ${{ env.DEPLOY_PORT }}
+          fingerprint: ${{ env.SSH_HOST_FINGERPRINT }}
+          source: dist/release.tar.gz
+          target: ${{ env.DEPLOY_PATH }}
+          overwrite: true
+          timeout: 60s
+          command_timeout: 5m
+
+      - name: Activate release
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        env:
+          BASE: ${{ env.DEPLOY_PATH }}
+          SHA: ${{ github.sha }}
+        with:
+          host: ${{ env.DEPLOY_HOST }}
+          username: ${{ env.DEPLOY_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          port: ${{ env.DEPLOY_PORT }}
+          fingerprint: ${{ env.SSH_HOST_FINGERPRINT }}
+          envs: BASE,SHA
+          command_timeout: 15m
           script: |
-            cd /home/cvhowlad/app3.cvhowlader.com
-            php artisan optimize
-            /home/cvhowlad/.npm-global/bin/pm2 startOrRestart ecosystem.config.cjs
+            set -euo pipefail
+
+            TARBALL="$BASE/release.tar.gz"
+            STAGE="$BASE/releases/$SHA.tmp"
+            FINAL="$BASE/releases/$SHA"
+
+            case "$SHA" in
+              *[!0-9a-fA-F]*)
+                echo "invalid commit sha: $SHA"
+                exit 1
+                ;;
+            esac
+
+            [ -f "$TARBALL" ] || { echo "release tarball is missing"; exit 1; }
+
+            # A re-run of the same commit must never delete the release that is
+            # currently serving. Suffix the id instead.
+            if [ -e "$FINAL" ]; then
+              FINAL="$FINAL-$(date -u +%Y%m%d%H%M%S)"
+            fi
+            RELEASE_ID="$(basename "$FINAL")"
+
+            mkdir -p "$BASE/releases" "$BASE/tmp"
+            rm -rf "$STAGE"
+            mkdir -p "$STAGE"
+
+            tar -xzf "$TARBALL" -C "$STAGE" --no-same-owner
+
+            for required in \
+              artisan \
+              vendor/autoload.php \
+              public/.htaccess \
+              public/build/manifest.json \
+              bootstrap/ssr/ssr.js \
+              deploy/activate.sh; do
+              [ -f "$STAGE/$required" ] || { echo "release is missing $required"; exit 1; }
+            done
+
+            if [ -e "$STAGE/.env" ]; then
+              echo "release contains .env; refusing to activate"
+              exit 1
+            fi
+
+            mv "$STAGE" "$FINAL"
+
+            bash "$FINAL/deploy/activate.sh" "$RELEASE_ID"
+
+            rm -f "$TARBALL"
+
+  rollback:
+    name: Roll back production
+    if: github.event_name == 'workflow_dispatch' && inputs.rollback_to != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST || secrets.REMOTE_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || secrets.REMOTE_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_HOST_FINGERPRINT: ${{ secrets.SSH_HOST_FINGERPRINT }}
+
+    steps:
+      - name: Verify deploy configuration
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH SSH_PRIVATE_KEY SSH_HOST_FINGERPRINT; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured (repository variable or secret)"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Roll back
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        env:
+          BASE: ${{ env.DEPLOY_PATH }}
+          TARGET: ${{ inputs.rollback_to }}
+        with:
+          host: ${{ env.DEPLOY_HOST }}
+          username: ${{ env.DEPLOY_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          port: ${{ env.DEPLOY_PORT }}
+          fingerprint: ${{ env.SSH_HOST_FINGERPRINT }}
+          envs: BASE,TARGET
+          command_timeout: 8m
+          script: |
+            set -euo pipefail
+
+            case "$TARGET" in
+              *[!A-Za-z0-9._-]*)
+                echo "invalid release id: $TARGET"
+                exit 1
+                ;;
+            esac
+
+            bash "$BASE/deploy/rollback.sh" "$TARGET"
