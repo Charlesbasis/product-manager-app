@@ -56,6 +56,11 @@ jobs:
       - name: Check Prettier formatting
         run: pnpm run format:check
 
+      # resources/js/routes and resources/js/actions are generated and
+      # gitignored. TypeScript needs them before it can resolve @/routes.
+      - name: Generate Wayfinder routes and actions
+        run: php artisan wayfinder:generate --with-form
+
       - name: ESLint
         run: pnpm run lint
 
