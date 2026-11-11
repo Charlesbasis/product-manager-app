@@ -8,10 +8,13 @@
 # Usage:
 #   server-setup.sh                      # create dirs, deploy.env, copy storage
 #   server-setup.sh --adopt-sqlite       # + point the live app at shared SQLite
-#   server-setup.sh --with-cron           # + scheduler/backup/health cron entries
+#   server-setup.sh --with-cron          # + scheduler/backup/health cron entries
+#   server-setup.sh --staging            # isolated rehearsal; never touches PM2/cron
 #
 # Typical first run (low-traffic window):
 #   bash deploy/server-setup.sh --adopt-sqlite --with-cron
+# Staging rehearsal:
+#   BASE=/home/cvhowlad/staging/app3 bash deploy/server-setup.sh --staging --adopt-sqlite
 
 set -Eeuo pipefail
 
@@ -26,12 +29,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ADOPT_SQLITE=0
 WITH_CRON=0
 INSTALL_SHIM=1
+# STAGING is sourced from deploy.env when present; --staging overrides it.
 
 for arg in "$@"; do
     case "$arg" in
         --adopt-sqlite) ADOPT_SQLITE=1 ;;
         --with-cron) WITH_CRON=1 ;;
         --no-shim) INSTALL_SHIM=0 ;;
+        --staging) STAGING=1 ;;
         -h | --help)
             sed -n '2,20p' "$0"
             exit 0
@@ -39,6 +44,16 @@ for arg in "$@"; do
         *) die "unknown option: $arg" ;;
     esac
 done
+
+if [ "$STAGING" = "1" ] && [ "$WITH_CRON" = "1" ]; then
+    die "--with-cron is production-only; staging shares the user crontab"
+fi
+
+if [ "$STAGING" = "1" ]; then
+    DEFAULT_SSR_APP_NAME="laravel-ssr-staging"
+else
+    DEFAULT_SSR_APP_NAME="laravel-ssr"
+fi
 
 detect_bin() {
     local candidate
@@ -49,6 +64,28 @@ detect_bin() {
         fi
     done
     command -v "$(basename "$1")" 2>/dev/null || true
+}
+
+set_env_value() {
+    local file="$1" key="$2" value="$3" stamp current eol=''
+    current="$(sed -n -E "s|^[[:space:]]*${key}[[:space:]]*=[[:space:]]*||p" "$file" | tail -n 1 | sed -e 's/\r$//')"
+    if [ "$current" = "$value" ]; then
+        return 0
+    fi
+
+    # The production .env is CRLF. Preserve its line endings instead of
+    # leaving a mixed file behind after adding or replacing a key.
+    if grep -q $'\r$' "$file"; then
+        eol=$'\r'
+    fi
+
+    stamp="$(date -u +%Y%m%d-%H%M%S)-$RANDOM"
+    cp -p "$file" "$file.bak.$stamp"
+    if grep -qE "^[[:space:]]*${key}=" "$file"; then
+        sed -i -E "s|^[[:space:]]*${key}=.*|${key}=${value}${eol}|" "$file"
+    else
+        printf '%s=%s%s\n' "$key" "$value" "$eol" >>"$file"
+    fi
 }
 
 ensure_dirs
@@ -69,48 +106,69 @@ else
 fi
 
 # 2. Operator-managed paths --------------------------------------------------
-if [ ! -f "$DEPLOY_ENV" ]; then
-    DETECTED_PHP="$(detect_bin \
-        /opt/alt/php82/usr/bin/php \
-        /opt/alt/php83/usr/bin/php \
-        /opt/alt/php84/usr/bin/php \
-        /usr/local/bin/php \
-        /usr/bin/php)"
-    DETECTED_PM2="$(detect_bin \
-        "$HOME/.npm-global/bin/pm2" \
-        /usr/local/bin/pm2 \
-        /usr/bin/pm2)"
-    DETECTED_COMPOSER="$(detect_bin \
-        "$HOME/.local/bin/composer" \
-        /usr/local/bin/composer \
-        /usr/bin/composer)"
+# The web runtime is PHP 8.5 FPM; use the matching CLI build for artisan and
+# Composer. Never let a stale deploy.env silently fall back to /usr/bin/php.
+DETECTED_PHP="$(detect_bin \
+    /opt/alt/php-fpm85/usr/bin/php \
+    /usr/local/bin/php \
+    /usr/bin/php)"
+[ -n "$DETECTED_PHP" ] || die "could not find a PHP binary"
 
+DETECTED_PHP_VERSION="$("$DETECTED_PHP" -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || true)"
+[ "$DETECTED_PHP_VERSION" = "8.5" ] || \
+    die "PHP 8.5 required; found ${DETECTED_PHP_VERSION:-unknown} at $DETECTED_PHP"
+
+DETECTED_PM2="$(detect_bin \
+    "$HOME/.npm-global/bin/pm2" \
+    /usr/local/bin/pm2 \
+    /usr/bin/pm2)"
+DETECTED_COMPOSER="$(detect_bin \
+    "$HOME/.local/bin/composer" \
+    /usr/local/bin/composer \
+    /usr/bin/composer)"
+
+if [ ! -f "$DEPLOY_ENV" ]; then
     {
         printf '# Managed by deploy/server-setup.sh. Mode 600. Do not commit.\n'
-        printf 'PHP_BIN=%q\n' "${DETECTED_PHP:-php}"
+        printf 'PHP_BIN=%q\n' "$DETECTED_PHP"
         printf 'PM2_BIN=%q\n' "${DETECTED_PM2:-pm2}"
         printf 'COMPOSER_BIN=%q\n' "${DETECTED_COMPOSER:-composer}"
         printf 'HEALTHCHECK_URL=%q\n' "${HEALTHCHECK_URL:-https://app3.cvhowlader.com}"
         printf 'BACKUP_RETENTION_DAYS=14\n'
         printf 'RELEASE_RETENTION=5\n'
         printf 'ASSET_RETENTION_DAYS=14\n'
+        printf 'SSR_APP_NAME=%q\n' "$DEFAULT_SSR_APP_NAME"
+        printf 'STAGING=%q\n' "$STAGING"
     } >"$DEPLOY_ENV"
     chmod 600 "$DEPLOY_ENV"
     log "wrote $DEPLOY_ENV"
-
-    set -a
-    # shellcheck disable=SC1090
-    . "$DEPLOY_ENV"
-    set +a
+else
+    # Existing installations created before the PHP 8.5 cutover still point at
+    # /usr/bin/php. Rewrite the values that must match the web runtime.
+    set_env_value "$DEPLOY_ENV" PHP_BIN "$DETECTED_PHP"
+    set_env_value "$DEPLOY_ENV" STAGING "$STAGING"
+    set_env_value "$DEPLOY_ENV" SSR_APP_NAME "$DEFAULT_SSR_APP_NAME"
+    chmod 600 "$DEPLOY_ENV"
 fi
 
-log "php: ${PHP_BIN}"
+PHP_BIN="$DETECTED_PHP"
+SSR_APP_NAME="$DEFAULT_SSR_APP_NAME"
+PM2_BIN="${DETECTED_PM2:-${PM2_BIN:-pm2}}"
+COMPOSER_BIN="${DETECTED_COMPOSER:-${COMPOSER_BIN:-}}"
+export PHP_BIN PM2_BIN COMPOSER_BIN SSR_APP_NAME
+require_php85
+
+# SITEMAP_PATH must target the real CWP docroot, not the immutable release.
+set_env_value "$SHARED_ENV" SITEMAP_PATH "$PUBLIC_DIR/sitemap.xml"
+
+log "php: ${PHP_BIN} (${DETECTED_PHP_VERSION})"
 log "pm2: ${PM2_BIN}"
+log "ssr process: ${SSR_APP_NAME}"
 
 # 3. SQLite ------------------------------------------------------------------
 LEGACY_DB="$BASE/database/database.sqlite"
 # shellcheck disable=SC2153
-SHARED_DB="/database/database.sqlite"
+SHARED_DB="$SHARED_DIR/database/database.sqlite"
 
 if [ ! -f "$SHARED_DB" ] && [ -f "$LEGACY_DB" ]; then
     command -v sqlite3 >/dev/null 2>&1 || die "sqlite3 is required to copy the database"
@@ -118,17 +176,6 @@ if [ ! -f "$SHARED_DB" ] && [ -f "$LEGACY_DB" ]; then
     sqlite3 "$LEGACY_DB" ".backup '$SHARED_DB'"
     chmod 600 "$SHARED_DB"
 fi
-
-set_env_value() {
-    local file="$1" key="$2" value="$3" stamp
-    stamp="$(date -u +%Y%m%d-%H%M%S)"
-    cp -p "$file" "$file.bak.$stamp"
-    if grep -qE "^[[:space:]]*${key}=" "$file"; then
-        sed -i -E "s|^[[:space:]]*${key}=.*|${key}=${value}|" "$file"
-    else
-        printf '\n%s=%s\n' "$key" "$value" >>"$file"
-    fi
-}
 
 if [ "$ADOPT_SQLITE" = "1" ]; then
     [ -f "$SHARED_DB" ] || die "shared database missing; cannot adopt SQLite"
@@ -140,6 +187,7 @@ if [ "$ADOPT_SQLITE" = "1" ]; then
     if [ -f "$BASE/.env" ]; then
         set_env_value "$BASE/.env" DB_CONNECTION sqlite
         set_env_value "$BASE/.env" DB_DATABASE "$SHARED_DB"
+        set_env_value "$BASE/.env" SITEMAP_PATH "$PUBLIC_DIR/sitemap.xml"
         log "legacy .env now points at the same database (no split-brain during cutover)"
 
         if [ -f "$BASE/vendor/autoload.php" ]; then
@@ -178,7 +226,9 @@ if [ "$INSTALL_SHIM" = "1" ]; then
 fi
 
 # 7. PM2 log rotation --------------------------------------------------------
-if command -v "$PM2_BIN" >/dev/null 2>&1; then
+if [ "$STAGING" = "1" ]; then
+    log "staging mode: skipping PM2 module installation"
+elif command -v "$PM2_BIN" >/dev/null 2>&1; then
     if ! "$PM2_BIN" describe pm2-logrotate >/dev/null 2>&1; then
         log "installing pm2-logrotate"
         "$PM2_BIN" install pm2-logrotate@3.0.1 || warn "pm2-logrotate install failed; install it manually"

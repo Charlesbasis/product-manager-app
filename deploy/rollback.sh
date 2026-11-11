@@ -18,6 +18,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 TARGET_ID="${1:-}"
 
+require_php85
+
 ensure_dirs
 acquire_lock
 

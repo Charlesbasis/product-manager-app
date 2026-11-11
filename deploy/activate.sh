@@ -22,6 +22,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RELEASE_ID="${1:-}"
 [ -n "$RELEASE_ID" ] || die "usage: activate.sh <release-id>"
 
+require_php85
+
 RELEASE_DIR="$(release_path "$RELEASE_ID")"
 [ -d "$RELEASE_DIR" ] || die "release not found: $RELEASE_DIR"
 
@@ -84,7 +86,11 @@ for required in "${REQUIRED_FILES[@]}"; do
     [ -f "$RELEASE_DIR/$required" ] || die "release is missing $required"
 done
 
-if [ -e "$RELEASE_DIR/.env" ] || [ -L "$RELEASE_DIR/.env" ]; then
+# A retried activation may have linked the shared env before failing later.
+# A real .env inside the release is still a hard error.
+if [ -L "$RELEASE_DIR/.env" ]; then
+    rm -f "$RELEASE_DIR/.env"
+elif [ -e "$RELEASE_DIR/.env" ]; then
     die "release must not contain an .env file"
 fi
 
@@ -105,12 +111,26 @@ log "checking PHP platform requirements"
     "$PHP_BIN" -r 'require "vendor/autoload.php";'
 )
 
-if [ -n "${COMPOSER_BIN:-}" ] && [ -x "$COMPOSER_BIN" ]; then
-    log "running composer check-platform-reqs"
-    (
+if [ -n "${COMPOSER_BIN:-}" ] && [ -f "$COMPOSER_BIN" ]; then
+    log "running composer check-platform-reqs with $PHP_BIN"
+    platform_output="$(
         cd "$RELEASE_DIR"
-        "$COMPOSER_BIN" check-platform-reqs --no-dev
-    )
+        # Composer's shebang resolves /usr/bin/env php (8.3); invoke it through
+        # the same 8.5 CLI that serves the application.
+        "$PHP_BIN" "$COMPOSER_BIN" check-platform-reqs --no-dev 2>&1
+    )" || {
+        # config.platform.php is pinned to 8.2 so the lock file still resolves
+        # for the legacy stack. One dependency (phpspreadsheet 1.x) also caps
+        # PHP at <8.5, which the real CWP runtime exceeds. Ignore only that
+        # upper-bound row; extension and minimum-version failures must still
+        # abort the deploy.
+        other_failures="$(printf '%s\n' "$platform_output" | grep 'failed' | grep -vE '^php[[:space:]]' || true)"
+        if [ -n "$other_failures" ]; then
+            printf '%s\n' "$platform_output" >&2
+            die "composer platform requirements failed"
+        fi
+        warn "ignoring PHP upper-bound constraint reported by Composer (runtime is PHP 8.5)"
+    }
 fi
 
 log "running package discovery"
@@ -165,7 +185,7 @@ pm2_start "$RELEASE_DIR"
 
 # 8. Sitemap (the command writes to the served docroot, not the release) -----
 if ! grep -qE '^[[:space:]]*SITEMAP_PATH=' "$SHARED_ENV"; then
-    warn "SITEMAP_PATH is not set; the sitemap would be written inside the release and not served"
+    die "SITEMAP_PATH is not set in $SHARED_ENV; run deploy/server-setup.sh first"
 fi
 
 log "regenerating sitemap"

@@ -47,12 +47,27 @@ if [ -f "$DEPLOY_ENV" ]; then
     set +a
 fi
 
-PHP_BIN="${PHP_BIN:-php}"
+# CWP serves this domain through the PHP 8.5 FPM build. The system `php` is
+# 8.3, so every artisan/composer command must use the matching CLI binary.
+DEFAULT_PHP_BIN="/opt/alt/php-fpm85/usr/bin/php"
+PHP_BIN="${PHP_BIN:-$DEFAULT_PHP_BIN}"
 PM2_BIN="${PM2_BIN:-pm2}"
 HEALTHCHECK_URL="${HEALTHCHECK_URL:-}"
 BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
 RELEASE_RETENTION="${RELEASE_RETENTION:-5}"
 ASSET_RETENTION_DAYS="${ASSET_RETENTION_DAYS:-14}"
+SSR_APP_NAME="${SSR_APP_NAME:-laravel-ssr}"
+STAGING="${STAGING:-0}"
+
+# Fail fast when the deploy shell and the web runtime disagree. `server-setup`
+# rewrites deploy.env on existing installations so a stale PHP_BIN cannot win.
+require_php85() {
+    [ -x "$PHP_BIN" ] || die "PHP_BIN is not executable: $PHP_BIN"
+
+    local version
+    version="$("$PHP_BIN" -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
+    [ "$version" = "8.5" ] || die "PHP_BIN must be PHP 8.5, got $version ($PHP_BIN)"
+}
 
 ensure_dirs() {
     mkdir -p \
@@ -187,12 +202,18 @@ publish_public() {
 # so a changed cwd/script (new release) is picked up; in fork mode a restart
 # already implies a short gap, and the health check retries through it.
 pm2_start() {
-    local release_dir="$1"
+    local release_dir="$1" app_name="$SSR_APP_NAME"
 
-    SSR_RELEASE="$release_dir" SSR_LOG_DIR="$SHARED_DIR/storage/logs" \
-        "$PM2_BIN" delete laravel-ssr >/dev/null 2>&1 || true
+    # A staging rehearsal must never delete or restart the production process.
+    if [ "$STAGING" = "1" ]; then
+        log "staging mode: skipping PM2 restart"
+        return 0
+    fi
 
-    SSR_RELEASE="$release_dir" SSR_LOG_DIR="$SHARED_DIR/storage/logs" \
+    SSR_APP_NAME="$app_name" SSR_RELEASE="$release_dir" SSR_LOG_DIR="$SHARED_DIR/storage/logs" \
+        "$PM2_BIN" delete "$app_name" >/dev/null 2>&1 || true
+
+    SSR_APP_NAME="$app_name" SSR_RELEASE="$release_dir" SSR_LOG_DIR="$SHARED_DIR/storage/logs" \
         "$PM2_BIN" start "$release_dir/ecosystem.config.cjs" --update-env 9>&-
 
     "$PM2_BIN" save 9>&-

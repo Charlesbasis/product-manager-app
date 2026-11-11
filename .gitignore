@@ -3,6 +3,7 @@
 /node_modules
 /public/build
 /public/hot
+/public/sitemap.xml
 /public/storage
 /resources/js/actions
 /resources/js/routes

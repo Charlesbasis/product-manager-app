@@ -5,11 +5,12 @@ const path = require('node:path');
 // the release that `current` points at, rather than from a stale realpath.
 const release = process.env.SSR_RELEASE || __dirname;
 const logDir = process.env.SSR_LOG_DIR || path.join(release, 'storage', 'logs');
+const appName = process.env.SSR_APP_NAME || 'laravel-ssr';
 
 module.exports = {
     apps: [
         {
-            name: 'laravel-ssr',
+            name: appName,
             script: 'bootstrap/ssr/ssr.js',
             interpreter: 'node',
             cwd: release,

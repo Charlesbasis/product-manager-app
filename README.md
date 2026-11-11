@@ -1,7 +1,7 @@
 # Nexus Inventory
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-orange.svg)](https://laravel.com)
-[![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4.svg)](https://www.php.net)
+[![PHP](https://img.shields.io/badge/PHP-8.5-777BB4.svg)](https://www.php.net)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6.svg)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4.svg)](https://tailwindcss.com)
@@ -48,7 +48,7 @@ Small businesses and e-commerce stores struggle with:
 ### Backend
 
 - Laravel 12
-- PHP 8.2+
+- PHP 8.5
 - Laravel Fortify (authentication)
 - Laravel Wayfinder (routing)
 - Maatwebsite Excel (import/export)
@@ -67,7 +67,7 @@ Small businesses and e-commerce stores struggle with:
 
 ## Prerequisites
 
-- PHP 8.2 or higher
+- PHP 8.5 or higher
 - Composer 2
 - Node.js 22 LTS or higher
 - pnpm 12.18.0 (`corepack enable` will pick it up from `packageManager`)
@@ -241,7 +241,14 @@ bash deploy/server-setup.sh --adopt-sqlite --with-cron
 `server-setup.sh` seeds `shared/.env` from the existing `$BASE/.env` (keeping
 `APP_KEY` intact), copies the live database with `sqlite3 .backup`, and points
 the legacy `.env` at the same shared file, so there is no split-brain between
-the old in-place app and the first atomic release. Use
+the old in-place app and the first atomic release. It pins `PHP_BIN` to
+`/opt/alt/php-fpm85/usr/bin/php`, matching the CWP PHP 8.5 FPM runtime; the
+system `php` (8.3) is never used for artisan or Composer.
+
+Before running setup against production, complete
+[`deploy/staging-rehearsal.md`](deploy/staging-rehearsal.md) in a disposable
+base. It exercises setup, activation, rollback and SQLite restore without
+touching production PM2, cron, or the live docroot. Use
 `.env.production.example` only as a reference for keys to add or change, for
 example:
 
