@@ -225,18 +225,16 @@ if [ "$INSTALL_SHIM" = "1" ]; then
     fi
 fi
 
-# 7. PM2 log rotation --------------------------------------------------------
-if [ "$STAGING" = "1" ]; then
-    log "staging mode: skipping PM2 module installation"
-elif command -v "$PM2_BIN" >/dev/null 2>&1; then
-    if ! "$PM2_BIN" describe pm2-logrotate >/dev/null 2>&1; then
-        log "installing pm2-logrotate"
-        "$PM2_BIN" install pm2-logrotate@3.0.1 || warn "pm2-logrotate install failed; install it manually"
+# 7. PM2 modules -------------------------------------------------------------
+# Never run `pm2 install` here. The installer spawns a second Node process that
+# competes for the account's 40-thread nproc cap and 1 GiB memory cgroup. One
+# hung installer blocked every SSH session with "exec request failed on channel
+# 0", and the OOM killer took PHP-FPM and the SSR process down with it. Logs
+# are rotated by deploy/rotate-logs.sh from the weekly cron entry instead.
+if [ "$STAGING" != "1" ] && command -v "$PM2_BIN" >/dev/null 2>&1; then
+    if "$PM2_BIN" describe pm2-logrotate >/dev/null 2>&1; then
+        warn "pm2-logrotate is installed; remove it with '$PM2_BIN uninstall pm2-logrotate' so rotate-logs.sh is the only rotation mechanism"
     fi
-    "$PM2_BIN" set pm2-logrotate:max_size 10M >/dev/null 2>&1 || true
-    "$PM2_BIN" set pm2-logrotate:retain 14 >/dev/null 2>&1 || true
-    "$PM2_BIN" set pm2-logrotate:compress true >/dev/null 2>&1 || true
-    "$PM2_BIN" set pm2-logrotate:rotateInterval '0 0 * * *' >/dev/null 2>&1 || true
 fi
 
 # 8. Cron --------------------------------------------------------------------
@@ -259,12 +257,14 @@ if [ "$WITH_CRON" = "1" ]; then
             "$DEPLOY_DIR" "$SHARED_DIR"
         printf '30 2 * * * %s/backup-sqlite.sh >> %s/storage/logs/backup.log 2>&1\n' \
             "$DEPLOY_DIR" "$SHARED_DIR"
+        printf '15 3 * * 0 %s/rotate-logs.sh >> %s/storage/logs/rotate.log 2>&1\n' \
+            "$DEPLOY_DIR" "$SHARED_DIR"
         printf '# END nexus-deploy\n'
     } >>"$NEW_CRON"
 
     crontab "$NEW_CRON"
     rm -f "$CURRENT_CRON" "$NEW_CRON"
-    log "installed scheduler, health and backup cron entries"
+    log "installed scheduler, health, backup and log-rotation cron entries"
 fi
 
 release_lock
