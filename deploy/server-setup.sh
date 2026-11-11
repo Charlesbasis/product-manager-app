@@ -209,11 +209,15 @@ fi
 
 # 5. Deploy tooling ----------------------------------------------------------
 mkdir -p "$DEPLOY_DIR/public"
-for file in "$SCRIPT_DIR"/*.sh; do
-    install -m 755 "$file" "$DEPLOY_DIR/$(basename "$file")"
-done
-install -m 644 "$SCRIPT_DIR/public/index.php" "$DEPLOY_DIR/public/index.php"
-log "installed deploy scripts into $DEPLOY_DIR"
+if [ "$(readlink -f "$SCRIPT_DIR")" = "$(readlink -f "$DEPLOY_DIR")" ]; then
+    log "deploy scripts already running from $DEPLOY_DIR"
+else
+    for file in "$SCRIPT_DIR"/*.sh; do
+        install -m 755 "$file" "$DEPLOY_DIR/$(basename "$file")"
+    done
+    install -m 644 "$SCRIPT_DIR/public/index.php" "$DEPLOY_DIR/public/index.php"
+    log "installed deploy scripts into $DEPLOY_DIR"
+fi
 
 # 6. Document root -----------------------------------------------------------
 if [ "$INSTALL_SHIM" = "1" ]; then
