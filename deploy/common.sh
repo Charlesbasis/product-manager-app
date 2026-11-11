@@ -140,8 +140,11 @@ atomic_symlink() {
 shared_db_path() {
     local path=""
     if [ -f "$SHARED_ENV" ]; then
+        # The production env is CRLF; strip the carriage return before the
+        # path is tested with -f, or every SQLite command silently targets
+        # "database.sqlite\r".
         path="$(sed -n 's/^[[:space:]]*DB_DATABASE[[:space:]]*=[[:space:]]*//p' "$SHARED_ENV" | tail -n 1)"
-        path="$(printf '%s' "$path" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")"
+        path="$(printf '%s' "$path" | sed -e 's/\r$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")"
     fi
     if [ -z "$path" ]; then
         path="$SHARED_DIR/database/database.sqlite"
