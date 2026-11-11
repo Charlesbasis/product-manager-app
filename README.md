@@ -219,7 +219,7 @@ extracts and activates it. Composer, pnpm and Vite never run on the VPS.
 │   ├── storage/                  uploads, logs, cache, sessions, views
 │   └── backups/db-*.sqlite.gz
 ├── public/                       REAL CWP docroot, never a symlink
-├── deploy/                       activate, rollback, backup, health, setup
+├── deploy/                       activate, rollback, backup, health, setup, rotate-logs
 └── tmp/
 ```
 
@@ -269,12 +269,17 @@ pm2 startup systemd -u "$USER" --hp "$HOME"
 pm2 save
 ```
 
-This host caps `cvhowlad` at 40 processes/threads. The deploy scripts set
-`UV_THREADPOOL_SIZE=2` for PM2 and the SSR app so activation fits under that
-cap. `pm2 install` spawns another Node process: it can fail with
-`spawn /bin/sh EAGAIN`, or hang while holding the cap. A hung installer blocks
-every new SSH session with `exec request failed on channel 0` until it exits, so
-raise `nproc` (for example to 200) before installing PM2 modules.
+This host gives `cvhowlad` two hard limits: `nproc 40` (plus `nofile 150`) in
+`/etc/security/limits.d/cvhowlad.conf`, and a 1 GiB memory cgroup at
+`/sys/fs/cgroup/memory/cvhowlad`. The deploy scripts set `UV_THREADPOOL_SIZE=2`
+for PM2 and the SSR app so activation fits, and they never run `pm2 install`:
+the module installer spawns another Node process, which can fail with
+`spawn /bin/sh EAGAIN` or hang holding both limits.
+
+Ask the provider to raise `nproc` (for example to 200), `nofile` (4096) and the
+memory cgroup (2 GiB). See
+[Host limits and recovery](#host-limits-and-recovery) before retrying a module
+install or debugging a hung account.
 
 ### GitHub configuration
 
@@ -332,11 +337,47 @@ SQLite backups use `sqlite3 .backup` (safe with WAL) and are verified with
 
 ### SSR process
 
-PM2 stays in `fork` mode with `instances: 1`. The host has `nproc=40` and no
-swap; cluster mode previously caused an SSR crash loop. Do not switch to
-cluster until the sysadmin raises the limits and a load test passes. Logs are
-rotated by `pm2-logrotate` (10M, 14 files, compressed) and there is no nightly
-`cron_restart`; use the five-minute health cron and external monitoring instead.
+PM2 stays in `fork` mode with `instances: 1`. The host has `nproc=40`, a 1 GiB
+memory cgroup and no swap; cluster mode previously caused an SSR crash loop. Do
+not switch to cluster until the sysadmin raises the limits and a load test
+passes. `ecosystem.config.cjs` caps the process at 300M and keeps
+`UV_THREADPOOL_SIZE=2`. There is no nightly `cron_restart`; use the five-minute
+health cron and external monitoring instead.
+
+PM2 logs are rotated by `deploy/rotate-logs.sh` from the weekly cron entry
+(copy-truncate above 10 MiB, gzip, keep 14 days). The `pm2-logrotate` module is
+deliberately not installed: installing it spikes memory and thread use, and a
+wedged account cannot be repaired without host access.
+
+### Host limits and recovery
+
+The 40-thread cap and the 1 GiB memory cgroup interact badly:
+
+- `nproc` is a per-process `RLIMIT_NPROC`. `sshd` forks with the 40 inherited
+  from the login session, so once the account owns 40 threads every new SSH
+  session fails with `exec request failed on channel 0` (SFTP and `scp` fail the
+  same way). Cron still starts jobs because it forks as root, but the job shell
+  cannot spawn children and logs `fork: Resource temporarily unavailable`.
+- When the memory cgroup fills, the kernel OOM killer picks the largest process
+  in it, usually the SSR `node` process or PHP-FPM. PM2 then tries to respawn,
+  `fork` returns `EAGAIN`, and PM2 leaves the app marked `online` with **no
+  PID**. `pm2 list` is therefore not evidence that SSR is running;
+  `health-check.sh` requires a live PID and an open SSR port.
+
+Recovery when SSH is already blocked:
+
+1. In CWP open **Cronbot** and add a job that runs a shell **builtin** only, for
+   example `kill -9 <pid>`. Builtins need no fork, so they work at the cap;
+   `ps`, `pkill`, `php` and `pm2` do not.
+2. Wait for the next minute, then delete the job.
+3. Once SSH returns, check the thread count with
+   `ps -u "$USER" -o nlwp= | awk '{s+=$1} END {print s}'`, repair an SSR app that
+   is `online` without a PID (`pm2 delete <name>`, then
+   `pm2 start current/ecosystem.config.cjs` with the `SSR_*` variables set), and
+   run `pm2 save`.
+
+`deploy/health-check.sh` warns when the account passes 80% of `nproc` or 85% of
+the memory cgroup.
 
 ## Project Structure
 

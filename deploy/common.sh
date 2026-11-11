@@ -59,11 +59,77 @@ ASSET_RETENTION_DAYS="${ASSET_RETENTION_DAYS:-14}"
 SSR_APP_NAME="${SSR_APP_NAME:-laravel-ssr}"
 STAGING="${STAGING:-0}"
 
-# This host caps cvhowlad at 40 processes/threads. PM2, its CLI and the SSR
-# app are all Node processes; a smaller libuv pool keeps a deploy and PM2
-# restart under the cap. Raise the limit and remove this when the host allows.
+# This host caps cvhowlad at 40 processes/threads (nproc in
+# /etc/security/limits.d/cvhowlad.conf) and runs the account inside a 1 GiB
+# memory cgroup (/sys/fs/cgroup/memory/cvhowlad). PM2, its CLI and the SSR app
+# are all Node processes; a smaller libuv pool keeps a deploy and PM2 restart
+# under the cap. Raise the limits and remove this when the host allows.
 UV_THREADPOOL_SIZE="${UV_THREADPOOL_SIZE:-2}"
 export UV_THREADPOOL_SIZE
+MEMCG_DIR="${MEMCG_DIR:-/sys/fs/cgroup/memory/cvhowlad}"
+
+# nproc is a per-process RLIMIT that the kernel compares against every thread
+# owned by the user. sshd inherits the 40 from the login session, so once the
+# limit is reached it cannot fork a shell ("exec request failed on channel 0"),
+# while cron can still start a job because it forks as root. Keep headroom.
+nproc_limit() {
+    local limit
+    limit="$(ulimit -u 2>/dev/null || true)"
+    case "$limit" in
+        '' | *[!0-9]*) printf '0\n' ;;
+        *) printf '%s\n' "$limit" ;;
+    esac
+}
+
+thread_count() {
+    ps -u "$(id -un)" -o nlwp= 2>/dev/null | awk '{ total += $1 } END { print total + 0 }'
+}
+
+nproc_headroom() {
+    local limit threads
+    limit="$(nproc_limit)"
+    if [ "$limit" -eq 0 ]; then
+        # No per-user cap (or `ulimit -u` reported "unlimited"): nothing to guard.
+        printf '%s\n' 999999
+        return 0
+    fi
+    threads="$(thread_count)"
+    printf '%s\n' "$((limit - threads))"
+}
+
+# Percentage of the account's memory cgroup in use, or nothing when the host
+# does not expose one.
+memcg_usage_percent() {
+    local usage limit
+    [ -r "$MEMCG_DIR/memory.usage_in_bytes" ] || return 0
+    [ -r "$MEMCG_DIR/memory.limit_in_bytes" ] || return 0
+    usage="$(cat "$MEMCG_DIR/memory.usage_in_bytes" 2>/dev/null || printf '0')"
+    limit="$(cat "$MEMCG_DIR/memory.limit_in_bytes" 2>/dev/null || printf '0')"
+    case "$limit" in
+        '' | *[!0-9]*) return 0 ;;
+    esac
+    # cgroup v1 reports "unlimited" as a value close to 2^63; skip arithmetic
+    # that would overflow.
+    if [ "$limit" -gt 1099511627776 ] 2>/dev/null; then
+        return 0
+    fi
+    if [ "$limit" -le 0 ]; then
+        return 0
+    fi
+    printf '%s\n' "$((usage * 100 / limit))"
+}
+
+# Warn and fail when starting another Node process has no room under nproc.
+# Callers decide whether that is fatal; optional work should skip instead.
+require_headroom() {
+    local needed="${1:-12}" headroom
+    headroom="$(nproc_headroom)"
+    if [ "$headroom" -lt "$needed" ]; then
+        warn "only $headroom nproc slots free (need $needed); raise cvhowlad's nproc limit first"
+        return 1
+    fi
+    return 0
+}
 
 # Fail fast when the deploy shell and the web runtime disagree. `server-setup`
 # rewrites deploy.env on existing installations so a stale PHP_BIN cannot win.
@@ -210,8 +276,14 @@ publish_public() {
 # Restart the SSR server from a specific release. PM2 has to forget the process
 # so a changed cwd/script (new release) is picked up; in fork mode a restart
 # already implies a short gap, and the health check retries through it.
+#
+# PM2 reports an app as "online" even when the spawn failed, so a delete+start
+# under a saturated nproc limit leaves an online record with no PID and takes
+# the SSR server down for good. Verify that the PID is alive and retry while
+# other processes exit.
 pm2_start() {
-    local release_dir="$1" app_name="$SSR_APP_NAME"
+    local release_dir="$1" app_name="$SSR_APP_NAME" attempt pid
+    local attempts="${PM2_START_ATTEMPTS:-5}"
 
     # A staging rehearsal must never delete or restart the production process.
     if [ "$STAGING" = "1" ]; then
@@ -219,13 +291,27 @@ pm2_start() {
         return 0
     fi
 
+    log "nproc headroom before PM2 restart: $(nproc_headroom) ($(thread_count)/$(nproc_limit) threads)"
+    require_headroom 12 || warn "PM2 restart continues; the retry loop waits for slots to free"
+
     SSR_APP_NAME="$app_name" SSR_RELEASE="$release_dir" SSR_LOG_DIR="$SHARED_DIR/storage/logs" \
         "$PM2_BIN" delete "$app_name" >/dev/null 2>&1 || true
 
-    SSR_APP_NAME="$app_name" SSR_RELEASE="$release_dir" SSR_LOG_DIR="$SHARED_DIR/storage/logs" \
-        "$PM2_BIN" start "$release_dir/ecosystem.config.cjs" --update-env 9>&-
+    for attempt in $(seq 1 "$attempts"); do
+        if SSR_APP_NAME="$app_name" SSR_RELEASE="$release_dir" SSR_LOG_DIR="$SHARED_DIR/storage/logs" \
+            "$PM2_BIN" start "$release_dir/ecosystem.config.cjs" --update-env 9>&-; then
+            pid="$("$PM2_BIN" pid "$app_name" 2>/dev/null | tail -n 1 | tr -d '\r' || true)"
+            if [ -n "$pid" ] && [ "$pid" != "0" ] && kill -0 "$pid" 2>/dev/null; then
+                "$PM2_BIN" save 9>&-
+                log "SSR process $app_name started (pid $pid, attempt $attempt/$attempts)"
+                return 0
+            fi
+        fi
+        warn "PM2 reported no live $app_name process (attempt $attempt/$attempts, $(nproc_headroom) slots free); retrying in 3s"
+        sleep 3
+    done
 
-    "$PM2_BIN" save 9>&-
+    die "could not start $app_name: pm2 may show it as online without a pid; check '$PM2_BIN describe $app_name'"
 }
 
 # Pending queue rows are a warning, not a deployment failure: the queue is not

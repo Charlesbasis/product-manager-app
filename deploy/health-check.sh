@@ -66,10 +66,18 @@ retry http_ok "$HEALTHCHECK_URL/up" || FAILED=1
 say "checking $HEALTHCHECK_URL/"
 retry http_ok "$HEALTHCHECK_URL/" || FAILED=1
 
-if "$PM2_BIN" describe "$SSR_APP_NAME" 2>/dev/null | grep -Eq 'status.*online'; then
-    say "pm2 process $SSR_APP_NAME is online"
+# PM2 can report "online" after a spawn that failed with EAGAIN (the account's
+# nproc cap), leaving an online record with no process at all. Require a live
+# PID in addition to the status line.
+ssr_pid() {
+    "$PM2_BIN" pid "$SSR_APP_NAME" 2>/dev/null | tail -n 1 | tr -d '\r' || true
+}
+
+SSR_PID="$(ssr_pid)"
+if [ -n "$SSR_PID" ] && [ "$SSR_PID" != "0" ] && kill -0 "$SSR_PID" 2>/dev/null; then
+    say "pm2 process $SSR_APP_NAME is online (pid $SSR_PID)"
 else
-    warn "pm2 process $SSR_APP_NAME is not online"
+    warn "pm2 process $SSR_APP_NAME has no live pid (pm2 status alone can be stale after a failed fork)"
     FAILED=1
 fi
 
@@ -85,6 +93,19 @@ if (exec 3<>"/dev/tcp/127.0.0.1/$SSR_PORT") 2>/dev/null; then
 else
     warn "SSR port $SSR_PORT is not accepting connections"
     FAILED=1
+fi
+
+# Capacity is a warning, not a failure: the site can be healthy while the
+# account is one Node process away from the deadlock described in the README.
+NPROC_LIMIT="$(nproc_limit)"
+NPROC_THREADS="$(thread_count)"
+if [ "${NPROC_LIMIT:-0}" -gt 0 ] 2>/dev/null && [ "$NPROC_THREADS" -gt "$((NPROC_LIMIT * 80 / 100))" ]; then
+    warn "nproc is nearly exhausted: $NPROC_THREADS/$NPROC_LIMIT threads in use; new SSH sessions and spawns will fail"
+fi
+
+MEM_PERCENT="$(memcg_usage_percent)"
+if [ -n "$MEM_PERCENT" ] && [ "$MEM_PERCENT" -ge 85 ]; then
+    warn "memory cgroup is ${MEM_PERCENT}% full; the OOM killer may terminate PHP or SSR"
 fi
 
 if [ "$FAILED" -ne 0 ]; then
