@@ -172,6 +172,9 @@ importers:
       '@inertiajs/react':
         specifier: ^3.11.0
         version: 3.11.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@inertiajs/vite':
+        specifier: ^3.11.0
+        version: 3.11.0(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vite@7.3.0(@types/node@26.6.6)(jiti@2.7.0)(lightningcss@1.33.0))
       '@radix-ui/react-avatar':
         specifier: ^1.3.1
         version: 1.3.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -716,6 +719,11 @@ packages:
         optional: true
       '@types/react-dom':
         optional: true
+
+  '@inertiajs/vite@3.11.0':
+    resolution: {integrity: sha512-BQDD++BbQ/Q7U2E3yPGYki/vkwC+pT2DNUXUItrGeMefLy8aBaJXftF979+hupU/V3rfXf1RpGZZRi+BcQ5jRQ==}
+    peerDependencies:
+      vite: ^7.0.0 || ^8.0.0
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2429,6 +2437,9 @@ packages:
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
+  magic-string@0.30.21:
+    resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
+
   magic-string@1.4.5:
     resolution: {integrity: sha512-oLLC2+YvQUfAa+vxoufE/yc1icb87M9iXIRqAoR/2EhE/8cb3SF/+Gi0c2By1B+5Vz2e2vQtUvHiu1+63Znh+w==}
 
@@ -3385,6 +3396,16 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
       '@types/react-dom': 19.3.0(@types/react@19.3.0)
+    transitivePeerDependencies:
+      - axios
+
+  '@inertiajs/vite@3.11.0(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vite@7.3.0(@types/node@26.6.6)(jiti@2.7.0)(lightningcss@1.33.0))':
+    dependencies:
+      '@inertiajs/core': 3.11.0(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
+      '@jridgewell/remapping': 2.3.5
+      magic-string: 0.30.21
+      tinyglobby: 0.2.15
+      vite: 7.3.0(@types/node@26.6.6)(jiti@2.7.0)(lightningcss@1.33.0)
     transitivePeerDependencies:
       - axios
 
@@ -5212,6 +5233,10 @@ snapshots:
   lucide-react@0.475.0(react@19.3.1):
     dependencies:
       react: 19.3.1
+
+  magic-string@0.30.21:
+    dependencies:
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   magic-string@1.4.5:
     dependencies:
