@@ -28,6 +28,8 @@ export default function StatCard({
         orange: 'bg-orange-50 border-orange-100 dark:bg-orange-900/20 dark:border-orange-800',
     };
 
+    const formatted = Math.abs(change) < 0.1 ? '<0.1' : change.toFixed(1);
+
     return (
         <div
             className={`rounded-xl border ${colorClasses[color as keyof typeof colorClasses]} p-5`}
@@ -78,7 +80,7 @@ export default function StatCard({
                             }
                         >
                             {isPositive ? '+' : ''}
-                            {change.toFixed(1)}%
+                            {formatted}%
                         </span>
                         <span className="ml-2 text-gray-500 dark:text-gray-400">
                             {changeLabel}
