@@ -328,11 +328,11 @@ importers:
         version: 8.72.2(eslint@9.39.5(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@5.9.3)
     optionalDependencies:
       '@rollup/rollup-linux-x64-gnu':
-        specifier: 4.68.0
-        version: 4.68.0
+        specifier: 4.68.3
+        version: 4.68.3
       '@rollup/rollup-win32-x64-msvc':
-        specifier: 4.68.0
-        version: 4.68.0
+        specifier: 4.68.3
+        version: 4.68.3
       '@tailwindcss/oxide-linux-x64-gnu':
         specifier: ^4.3.5
         version: 4.3.5
@@ -1165,14 +1165,14 @@ packages:
   '@rolldown/pluginutils@1.1.1':
     resolution: {integrity: sha512-glFIJDvLNDtJhT9qrMFWLPbvS+skxgt4L0K8Ei2YtnhPysAJnsI7nyxSJxKj4ADeKX0OLjC4ntRkwpLOoS3rwA==}
 
-  '@rollup/rollup-linux-x64-gnu@4.68.0':
-    resolution: {integrity: sha512-GDOmvgephpRCNyNGRQOZh0KD2gTyRVM1Bb1iOo759xeCUpCAoRCmJioOOSu2MwyWfNOocGd0V5I9vYLfteC6/A==}
+  '@rollup/rollup-linux-x64-gnu@4.68.3':
+    resolution: {integrity: sha512-pfn4Zd9Ic3lEaSwW3GsQhTIDd7929C+eiEkOutsSCT2IHD6rDLblwmMQkgeGOso0oDo9Jk/ERtFdtFr9ElLs+g==}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@rollup/rollup-win32-x64-msvc@4.68.0':
-    resolution: {integrity: sha512-e/NRJFl48wL5DFNSzQrvm4kaB5dzNNmqWjIJ6And2Sjuw4klO3w3TXMvCAEF1tHTrQQgpOD4QVkBE/92/yBGrQ==}
+  '@rollup/rollup-win32-x64-msvc@4.68.3':
+    resolution: {integrity: sha512-ADb1Uz2MNM0sxVpAlMNdQG16Hw4sgW1aqVL7NeqBMpcZeiHb192d7W6shZdMQs33D+w9ihDYBBPsYqqc4MlD8w==}
     cpu: [x64]
     os: [win32]
 
@@ -3762,10 +3762,10 @@ snapshots:
 
   '@rolldown/pluginutils@1.1.1': {}
 
-  '@rollup/rollup-linux-x64-gnu@4.68.0':
+  '@rollup/rollup-linux-x64-gnu@4.68.3':
     optional: true
 
-  '@rollup/rollup-win32-x64-msvc@4.68.0':
+  '@rollup/rollup-win32-x64-msvc@4.68.3':
     optional: true
 
   '@standard-schema/spec@1.1.0': {}
