@@ -1,0 +1,133 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Command "app\:create\-admin\-user" does not have argument "email"\.$#'
+			identifier: larastan.console.undefinedArgument
+			count: 1
+			path: app/Console/Commands/CreateAdminUser.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$avg\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$max\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$min\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$total_units\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Called ''pluck'' on Laravel collection, but could have been retrieved as a query\.$#'
+			identifier: larastan.noUnnecessaryCollectionCall
+			count: 2
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 3
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ProductController\:\:clearProductsCache\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ProductController\:\:getCacheKey\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ProductController\:\:getPaginatedProducts\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ProductController\:\:isSearchEngineBot\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ProductController\:\:setCacheHeaders\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between 0\|10\|50\|100\|500\|1000 and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 3
+			path: app/Http/Controllers/ProductController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-falsy\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Imports/ProductsImport.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Role\:\:Admin will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Role\:\:Editor will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Cannot call method canMutate\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 7
+			path: app/Policies/ProductPolicy.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/ExampleTest.php
