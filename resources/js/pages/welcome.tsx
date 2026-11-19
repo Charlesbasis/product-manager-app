@@ -1,5 +1,5 @@
 import PublicFooter from '@/components/public-footer';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, login } from '@/routes';
 import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
@@ -12,11 +12,7 @@ import {
     Zap,
 } from 'lucide-react';
 
-export default function Welcome({
-    canRegister = true,
-}: {
-    canRegister?: boolean;
-}) {
+export default function Welcome() {
     const { auth } = usePage<SharedData>().props;
 
     // SEO Metadata
@@ -29,11 +25,6 @@ export default function Welcome({
     return (
         <>
             <Head title={pageTitle}>
-                <link rel="preconnect" href="https://fonts.bunny.net" />
-                <link
-                    href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700"
-                    rel="stylesheet"
-                />
                 <meta name="description" content={pageDescription} />
                 <meta name="keywords" content={pageKeywords} />
                 <meta property="og:title" content={pageTitle} />
@@ -108,21 +99,6 @@ export default function Welcome({
                                         >
                                             Sign In
                                         </Link>
-                                        {canRegister && (
-                                            <Link
-                                                href={register()}
-                                                className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-700 sm:px-4"
-                                            >
-                                                {/* Text changes on mobile to save space */}
-                                                <span className="hidden sm:inline">
-                                                    Get Started Free
-                                                </span>
-                                                <span className="sm:hidden">
-                                                    Join
-                                                </span>
-                                                <ArrowRight className="ml-1 h-4 w-4 sm:ml-2" />
-                                            </Link>
-                                        )}
                                     </>
                                 )}
                             </nav>
@@ -148,15 +124,6 @@ export default function Welcome({
                                     not guesswork.
                                 </p>
                                 <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                                    <Link
-                                        href={
-                                            canRegister ? register() : login()
-                                        }
-                                        className="inline-flex items-center rounded-xl bg-blue-600 px-8 py-3 text-base font-semibold text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                                    >
-                                        Start Free Trial
-                                        <ArrowRight className="ml-2 h-5 w-5" />
-                                    </Link>
                                     <Link
                                         href="#features"
                                         className="inline-flex items-center rounded-xl border border-gray-300 bg-white px-8 py-3 text-base font-semibold text-gray-900 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
@@ -277,17 +244,6 @@ export default function Welcome({
                                     Join thousands of businesses managing their
                                     products efficiently with our platform.
                                 </p>
-                                <div className="mt-10">
-                                    <Link
-                                        href={
-                                            canRegister ? register() : login()
-                                        }
-                                        className="inline-flex items-center rounded-xl bg-white px-8 py-3 text-base font-semibold text-blue-600 hover:bg-blue-50"
-                                    >
-                                        Start Your Free Trial
-                                        <ArrowRight className="ml-2 h-5 w-5" />
-                                    </Link>
-                                </div>
                             </div>
                         </div>
                     </section>
