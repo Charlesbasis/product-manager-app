@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Product;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ProductFormRequest extends FormRequest
@@ -11,13 +13,19 @@ class ProductFormRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        if ($this->route('product')) {
+            // Update request
+            return $this->user()->can('update', $this->route('product'));
+        } else {
+            // Create request
+            return $this->user()->can('create', Product::class);
+        }
     }
 
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {

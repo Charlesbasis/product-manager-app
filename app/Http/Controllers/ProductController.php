@@ -4,16 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Exports\ProductsExport;
 use App\Http\Requests\ProductFormRequest;
+use App\Http\Requests\ProductIndexRequest;
 use App\Imports\ProductsImport;
 use App\Models\Product;
 use App\Models\Tag;
 use Exception;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Validators\ValidationException;
 
 class ProductController extends Controller
 {
@@ -33,29 +36,52 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(ProductIndexRequest $request)
     {
-        // Bump the version suffix whenever the cached payload shape changes so
-        // old entries cannot leak stale fields into the UI.
-        $cacheKey = 'products_index_v2_'.md5(json_encode($request->all()));
+        // 1. Get strictly validated inputs
+        $validated = $request->validated();
 
-        $sort = $this->sanitizeSort($request->sort);
-        $direction = $this->sanitizeDirection($request->direction);
+        // 2. Sanitize sort and direction safely (SQL Injection Prevention)
+        $allowedSorts = ['name', 'price', 'quantity', 'status', 'created_at'];
+        $sort = in_array($validated['sort'] ?? '', $allowedSorts, true)
+            ? $validated['sort']
+            : 'created_at';
 
-        $products = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($request, $sort, $direction) {
+        $allowedDirections = ['asc', 'desc'];
+        $direction = in_array(strtolower($validated['direction'] ?? ''), $allowedDirections, true)
+            ? strtolower($validated['direction'])
+            : 'desc';
+
+        $perPage = $validated['per_page'] ?? 10;
+        $page = $validated['page'] ?? 1;
+
+        // 3. Build a strict, predictable cache key
+        $cacheData = [
+            'search' => $validated['search'] ?? null,
+            'sort' => $sort,
+            'direction' => $direction,
+            'min_price' => $validated['min_price'] ?? null,
+            'max_price' => $validated['max_price'] ?? null,
+            'per_page' => $perPage,
+            'page' => $page,
+        ];
+
+        // Bump version to v3 since we changed the key structure
+        $cacheKey = 'products_index_v3_'.md5(json_encode($cacheData));
+
+        // 4. Cache with explicit bounds
+        $products = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($validated, $sort, $direction, $perPage, $page) {
             return Product::with('tags')
-                ->when($request->search, function ($query) use ($request) {
-                    $search = $request->search;
-
+                ->when($validated['search'] ?? null, function ($query, $search) {
                     $query->where(function ($query) use ($search) {
                         $query->where('name', 'like', "%{$search}%")
                             ->orWhere('description', 'like', "%{$search}%");
                     });
                 })
-                ->when($request->filled('min_price'), fn ($query) => $query->where('price', '>=', $request->min_price))
-                ->when($request->filled('max_price'), fn ($query) => $query->where('price', '<=', $request->max_price))
-                ->orderBy($sort, $direction)
-                ->paginate($request->per_page ?? 10)
+                ->when($validated['min_price'] ?? null, fn ($query, $min) => $query->where('price', '>=', $min))
+                ->when($validated['max_price'] ?? null, fn ($query, $max) => $query->where('price', '<=', $max))
+                ->orderBy($sort, $direction) // Now 100% safe because of the allowlist above
+                ->paginate($perPage, ['*'], 'page', $page)
                 ->withQueryString();
         });
 
@@ -74,9 +100,9 @@ class ProductController extends Controller
 
         return Inertia::render('products/index', [
             'products' => $products,
-            'filters' => $request->only(['search', 'sort', 'direction', 'min_price', 'max_price', 'per_page']),
+            'filters' => $cacheData,
             'perPageOptions' => [2, 5, 10, 25, 50, 100],
-            'currentPerPage' => $this->getValidPerPage($request),
+            'currentPerPage' => $perPage,
         ]);
     }
 
@@ -265,7 +291,7 @@ class ProductController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function store(ProductFormRequest $request)
     {
@@ -474,7 +500,7 @@ class ProductController extends Controller
                 'success' => true,
                 'message' => 'Products imported successfully.',
             ]);
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+        } catch (ValidationException $e) {
             $failures = $e->failures();
 
             $errors = [];
@@ -492,7 +518,7 @@ class ProductController extends Controller
                 'message' => 'Import failed due to validation errors',
                 'errors' => $errors,
             ], 422);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Import error: '.$e->getMessage());
 
             return response()->json([
