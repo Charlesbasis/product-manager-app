@@ -1,24 +1,22 @@
-import axios, { type InternalAxiosRequestConfig } from 'axios';
+import axios from 'axios';
 
 const axiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000',
+    baseURL: '',
     headers: {
         'X-Requested-With': 'XMLHttpRequest',
         Accept: 'application/json',
     },
-    withCredentials: true, // Important for Laravel Sanctum/sessions
-    timeout: 10000, // 10 seconds timeout
+    withCredentials: true,
+    timeout: 10000,
 });
 
 axiosInstance.interceptors.request.use(
     (config) => {
-        // Only add CSRF token for non-GET requests
         if (config.method?.toUpperCase() !== 'GET') {
             const token = getCSRFToken();
             if (token) {
                 config.headers['X-CSRF-TOKEN'] = token;
 
-                // For form data, also add _token parameter
                 if (config.data instanceof FormData) {
                     config.data.append('_token', token);
                 }
@@ -26,19 +24,19 @@ axiosInstance.interceptors.request.use(
         }
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    },
+    (error) => Promise.reject(error),
 );
 
 axiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
-        // Handle CSRF token mismatch specifically
-        if (error.response?.status === 419 && error.config) {
-            console.error('CSRF token mismatch. Refreshing token...');
-            // Optionally: refresh CSRF token and retry
-            return refreshCSRFTokenAndRetry(error.config);
+        // FIX 2: Handle 419 gracefully without calling non-existent Sanctum routes.
+        if (error.response?.status === 419) {
+            console.warn(
+                'Session expired. Reloading page to fetch new CSRF token...',
+            );
+            // A hard reload is the safest way to get a fresh token in a standard Laravel app.
+            window.location.reload();
         }
         return Promise.reject(error);
     },
@@ -53,26 +51,6 @@ function getCSRFToken(): string | null {
         );
     }
     return null;
-}
-
-async function refreshCSRFTokenAndRetry(
-    originalRequest: InternalAxiosRequestConfig,
-) {
-    try {
-        // Fetch new CSRF token from Laravel
-        await axios.get('/sanctum/csrf-cookie');
-
-        // Update the meta tag with new token if needed
-        const newToken = getCSRFToken();
-        if (newToken && originalRequest.headers) {
-            originalRequest.headers['X-CSRF-TOKEN'] = newToken;
-        }
-
-        // Retry the original request
-        return axiosInstance(originalRequest);
-    } catch (error) {
-        return Promise.reject(error);
-    }
 }
 
 export default axiosInstance;

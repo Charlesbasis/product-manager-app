@@ -1,0 +1,17 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+        - tests
+    level: 5
+
+    reportUnmatchedIgnoredErrors: false
+
+    ignoreErrors:
+        # If you need to ignore "missingType.iterableValue" (the replacement for checkMissingIterableValueType), use this identifier instead:
+        # - identifier: missingType.iterableValue
+        # If you need to ignore "missingType.generics" (the replacement for checkGenericClassInNonGenericObjectType), use this identifier instead:
+        # - identifier: missingType.generics
